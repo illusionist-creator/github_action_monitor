@@ -1,0 +1,3131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub Actions Dashboard</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+    </script>
+    <style>
+        :root {
+            --bg: #0d0f12;
+            --bg2: #13161b;
+            --bg3: #1a1e25;
+            --bg4: #212630;
+            --border: rgba(255, 255, 255, 0.07);
+            --border2: rgba(255, 255, 255, 0.12);
+            --text: #e8eaf0;
+            --text2: #8b909e;
+            --text3: #555b6a;
+            --green: #3ecf8e;
+            --green-dim: rgba(62, 207, 142, 0.12);
+            --red: #f05252;
+            --red-dim: rgba(240, 82, 82, 0.12);
+            --amber: #f0a52b;
+            --amber-dim: rgba(240, 165, 43, 0.12);
+            --blue: #5b8dee;
+            --blue-dim: rgba(91, 141, 238, 0.12);
+            --purple: #a78bfa;
+            --purple-dim: rgba(167, 139, 250, 0.12);
+            --mono: 'JetBrains Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+            --radius: 8px;
+            --radius-lg: 12px;
+            --transition-speed: 0.3s;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg4);
+            border-radius: 3px;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 220px;
+            flex-shrink: 0;
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 30px;
+            height: 30px;
+            background: var(--green-dim);
+            border: 1px solid rgba(62, 207, 142, 0.3);
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .logo-text {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .logo-sub {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: var(--mono);
+        }
+
+        .nav-section {
+            padding: 16px 12px 8px;
+        }
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text3);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0 8px;
+            margin-bottom: 6px;
+            font-family: var(--mono);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 10px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            color: var(--text2);
+            font-size: 13px;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .nav-item:hover {
+            background: var(--bg3);
+            color: var(--text);
+        }
+        .nav-item.active {
+            background: var(--bg3);
+            color: var(--text);
+            border-color: var(--border);
+        }
+        .nav-item.disabled {
+            pointer-events: none;
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .nav-item .nav-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .nav-item .nav-count {
+            margin-left: auto;
+            font-size: 10px;
+            font-family: var(--mono);
+            background: var(--bg4);
+            padding: 1px 6px;
+            border-radius: 10px;
+            color: var(--text3);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 14px 16px;
+            border-top: 1px solid var(--border);
+        }
+        .token-input-wrap {
+            margin-top: 8px;
+        }
+        .token-label {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: var(--mono);
+            margin-bottom: 5px;
+        }
+        .token-input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            padding: 6px 8px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s, opacity 0.2s;
+        }
+        .token-input:focus {
+            border-color: var(--green);
+        }
+        .token-input::placeholder {
+            color: var(--text3);
+        }
+        .token-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--bg3);
+        }
+        .connect-btn {
+            width: 100%;
+            margin-top: 6px;
+            background: rgba(62, 207, 142, 0.15);
+            border: 1px solid rgba(62, 207, 142, 0.3);
+            border-radius: var(--radius);
+            color: var(--green);
+            font-size: 11px;
+            font-family: var(--mono);
+            padding: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .connect-btn:hover {
+            background: rgba(62, 207, 142, 0.25);
+        }
+        .connect-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .disconnect-btn {
+            width: 100%;
+            margin-top: 4px;
+            background: rgba(240, 82, 82, 0.1);
+            border: 1px solid rgba(240, 82, 82, 0.25);
+            border-radius: var(--radius);
+            color: var(--red);
+            font-size: 10px;
+            font-family: var(--mono);
+            padding: 5px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: none;
+        }
+        .disconnect-btn:hover {
+            background: rgba(240, 82, 82, 0.2);
+        }
+        .disconnect-btn.visible {
+            display: block;
+        }
+
+        /* ── Main ── */
+        .main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: opacity var(--transition-speed) ease;
+        }
+
+        /* Disabled overlay */
+        .main-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(13, 15, 18, 0.75);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            opacity: 1;
+            visibility: visible;
+        }
+        .main-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .overlay-card {
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-lg);
+            padding: 32px 40px;
+            text-align: center;
+            max-width: 420px;
+        }
+        .overlay-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            background: var(--green-dim);
+            border: 1px solid rgba(62, 207, 142, 0.3);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .overlay-icon svg {
+            width: 22px;
+            height: 22px;
+            color: var(--green);
+        }
+        .overlay-title {
+            font-family: var(--mono);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .overlay-sub {
+            font-size: 11px;
+            color: var(--text3);
+            font-family: var(--mono);
+            line-height: 1.6;
+        }
+
+        .topbar {
+            height: 56px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 12px;
+            background: var(--bg2);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .topbar-title {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .topbar-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ctrl-select {
+            background: var(--bg3);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 12px;
+            font-family: var(--mono);
+            padding: 6px 10px;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 26px;
+            transition: border-color 0.2s, opacity 0.2s;
+        }
+        .ctrl-select:focus {
+            border-color: var(--green);
+        }
+        .ctrl-select:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--green);
+            background: var(--green-dim);
+            border: 1px solid rgba(62, 207, 142, 0.2);
+            padding: 4px 9px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .live-badge.demo-mode {
+            color: var(--text3);
+            background: rgba(255, 255, 255, 0.03);
+            border-color: var(--border);
+        }
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s ease infinite;
+        }
+        .live-badge.demo-mode .live-dot {
+            background: var(--text3);
+            animation: none;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .content {
+            padding: 24px;
+            flex: 1;
+            transition: opacity var(--transition-speed) ease;
+        }
+        .content.disabled {
+            opacity: 0.35;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .section-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text3);
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        @media(max-width:1200px) {
+            .metrics {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .metric-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            transition: border-color 0.15s;
+        }
+        .metric-card:hover {
+            border-color: var(--border2);
+        }
+        .metric-label {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--text3);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-size: 26px;
+            font-weight: 400;
+            font-family: var(--mono);
+            line-height: 1;
+        }
+        .metric-sub {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 5px;
+            font-family: var(--mono);
+        }
+        .metric-trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            font-size: 11px;
+            font-family: var(--mono);
+        }
+        .trend-up {
+            color: var(--green);
+        }
+        .trend-down {
+            color: var(--red);
+        }
+
+        .card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+        }
+        .card-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 16px;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .three-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+        @media(max-width:1100px) {
+            .two-col,
+            .three-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 10px;
+            font-family: var(--mono);
+            font-weight: 500;
+            padding: 2px 7px;
+            border-radius: 20px;
+            border: 1px solid;
+        }
+        .badge-green {
+            background: var(--green-dim);
+            color: #6effc6;
+            border-color: rgba(62, 207, 142, 0.25);
+        }
+        .badge-red {
+            background: var(--red-dim);
+            color: #ff8888;
+            border-color: rgba(240, 82, 82, 0.25);
+        }
+        .badge-amber {
+            background: var(--amber-dim);
+            color: #ffd080;
+            border-color: rgba(240, 165, 43, 0.25);
+        }
+        .badge-blue {
+            background: var(--blue-dim);
+            color: #92b6ff;
+            border-color: rgba(91, 141, 238, 0.25);
+        }
+        .badge-gray {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text2);
+            border-color: var(--border);
+        }
+        .badge-purple {
+            background: var(--purple-dim);
+            color: #c4b5fd;
+            border-color: rgba(167, 139, 250, 0.25);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: inline-block;
+        }
+        .dot-green {
+            background: var(--green);
+        }
+        .dot-red {
+            background: var(--red);
+        }
+        .dot-amber {
+            background: var(--amber);
+        }
+        .dot-blue {
+            background: var(--blue);
+        }
+        .dot-gray {
+            background: var(--text3);
+        }
+
+        .repo-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .repo-row {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: border-color 0.15s;
+        }
+        .repo-row:hover {
+            border-color: var(--border2);
+        }
+        .repo-row.open {
+            border-color: rgba(62, 207, 142, 0.25);
+        }
+
+        .repo-summary {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .repo-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .repo-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .repo-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            font-family: var(--mono);
+        }
+        .repo-desc {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .repo-stats {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+        .repo-stat {
+            text-align: right;
+        }
+        .repo-stat-val {
+            font-family: var(--mono);
+            font-size: 14px;
+            font-weight: 400;
+        }
+        .repo-stat-label {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: var(--mono);
+        }
+
+        .sparkline {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 28px;
+        }
+        .spark-bar {
+            width: 5px;
+            border-radius: 1px;
+            min-height: 2px;
+        }
+
+        .repo-health-bar {
+            width: 60px;
+        }
+        .health-track {
+            height: 4px;
+            background: var(--bg4);
+            border-radius: 2px;
+            margin-top: 4px;
+        }
+        .health-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .chevron-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--text3);
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .open .chevron-icon {
+            transform: rotate(180deg);
+        }
+
+        .repo-detail {
+            display: none;
+            padding: 0 18px 18px;
+            border-top: 1px solid var(--border);
+            margin-top: 0;
+        }
+        .repo-row.open .repo-detail {
+            display: block;
+            padding-top: 18px;
+        }
+
+        .detail-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .d-metric {
+            background: var(--bg3);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+        }
+        .d-metric-label {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 5px;
+        }
+        .d-metric-val {
+            font-size: 20px;
+            font-family: var(--mono);
+            font-weight: 400;
+        }
+        .d-metric-sub {
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 2px;
+            font-family: var(--mono);
+        }
+
+        .wf-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .wf-table th {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: left;
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .wf-table td {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-family: var(--mono);
+        }
+        .wf-table tr:last-child td {
+            border-bottom: none;
+        }
+        .wf-table tr:hover td {
+            background: var(--bg3);
+        }
+
+        .dur-bar-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dur-track {
+            flex: 1;
+            height: 5px;
+            background: var(--bg4);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .dur-fill {
+            height: 100%;
+            background: var(--blue);
+            border-radius: 2px;
+        }
+        .dur-val {
+            font-size: 11px;
+            color: var(--text2);
+            width: 40px;
+            text-align: right;
+        }
+
+        .failure-box {
+            background: rgba(240, 82, 82, 0.06);
+            border: 1px solid rgba(240, 82, 82, 0.15);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            margin-top: 14px;
+        }
+        .failure-box-title {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--red);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .cause-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .cause-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-family: var(--mono);
+        }
+        .cause-bar-track {
+            flex: 1;
+            height: 4px;
+            background: rgba(240, 82, 82, 0.15);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .cause-bar-fill {
+            height: 100%;
+            background: var(--red);
+            border-radius: 2px;
+        }
+        .cause-pct {
+            font-size: 11px;
+            color: var(--text3);
+            width: 32px;
+            text-align: right;
+        }
+        .cause-label {
+            color: var(--text2);
+            min-width: 200px;
+        }
+
+        .detail-chart-wrap {
+            margin-top: 16px;
+        }
+
+        .runs-table-wrap {
+            overflow-x: auto;
+        }
+        .runs-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+        .runs-table th {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg2);
+        }
+        .runs-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-family: var(--mono);
+            color: var(--text2);
+        }
+        .runs-table tr:hover td {
+            background: var(--bg3);
+        }
+        .runs-table tr:last-child td {
+            border-bottom: none;
+        }
+        .run-name {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .run-branch {
+            color: var(--text3);
+        }
+
+        .heatmap-container {
+            display: flex;
+            gap: 6px;
+        }
+        .heatmap-days {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding-top: 18px;
+        }
+        .hday {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--text3);
+            height: 14px;
+            display: flex;
+            align-items: center;
+        }
+        .heatmap-body {
+            flex: 1;
+        }
+        .heatmap-hours {
+            display: flex;
+            margin-bottom: 4px;
+        }
+        .hhour {
+            flex: 1;
+            font-size: 9px;
+            font-family: var(--mono);
+            color: var(--text3);
+            text-align: center;
+        }
+        .heatmap-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .heatmap-row {
+            display: flex;
+            gap: 2px;
+        }
+        .hcell {
+            flex: 1;
+            height: 14px;
+            border-radius: 2px;
+            cursor: default;
+            position: relative;
+        }
+        .hcell:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg4);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            padding: 3px 7px;
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--text);
+            white-space: nowrap;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .heat-legend {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            margin-top: 8px;
+        }
+        .heat-leg-label {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: var(--mono);
+            margin-right: 4px;
+        }
+        .heat-leg-cell {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .failure-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .fail-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            border-left: 3px solid var(--red);
+        }
+        .fail-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .fail-card-name {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .fail-card-meta {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--text3);
+            margin-top: 3px;
+        }
+        .fail-card-time {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--text3);
+            white-space: nowrap;
+        }
+        .causes-header {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .fail-causes {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .fc-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .fc-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .fc-label {
+            font-size: 12px;
+            font-family: var(--mono);
+            color: var(--text2);
+            flex: 1;
+        }
+        .fc-conf {
+            font-size: 11px;
+            font-family: var(--mono);
+        }
+        .fc-conf-high {
+            color: var(--red);
+        }
+        .fc-conf-med {
+            color: var(--amber);
+        }
+        .fc-conf-low {
+            color: var(--text3);
+        }
+
+        .alert-strip {
+            background: rgba(240, 165, 43, 0.08);
+            border: 1px solid rgba(240, 165, 43, 0.2);
+            border-radius: var(--radius);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            font-family: var(--mono);
+            color: var(--amber);
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text3);
+            font-family: var(--mono);
+            font-size: 12px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--text3);
+            border-top-color: var(--green);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+        .fade-in-1 {
+            animation-delay: 0.05s;
+            opacity: 0;
+        }
+        .fade-in-2 {
+            animation-delay: 0.1s;
+            opacity: 0;
+        }
+        .fade-in-3 {
+            animation-delay: 0.15s;
+            opacity: 0;
+        }
+
+        /* Refresh button */
+        .refresh-btn {
+            background: var(--bg3);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            color: var(--text2);
+            font-size: 11px;
+            font-family: var(--mono);
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .refresh-btn:hover {
+            background: var(--bg4);
+            color: var(--text);
+        }
+        .refresh-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+
+        <!-- ── Sidebar ── -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="8" cy="8" r="3" stroke="#3ecf8e" stroke-width="1.5" />
+                        <path d="M8 2v2M8 12v2M2 8h2M12 8h2" stroke="#3ecf8e" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="logo-text">Actions</div>
+                    <div class="logo-sub" id="logoSub">dashboard v1.0</div>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Views</div>
+                <div class="nav-item active" onclick="switchTab('overview', this)" id="nav-overview">
+                    <span class="nav-dot dot-green"></span>
+                    Overview
+                </div>
+                <div class="nav-item" onclick="switchTab('repos', this)" id="nav-repos">
+                    <span class="nav-dot dot-blue"></span>
+                    Repositories
+                    <span class="nav-count" id="nav-repo-count">—</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('runs', this)" id="nav-runs">
+                    <span class="nav-dot dot-amber"></span>
+                    All runs
+                </div>
+                <div class="nav-item" onclick="switchTab('failures', this)" id="nav-failures">
+                    <span class="nav-dot dot-red"></span>
+                    Failures
+                    <span class="nav-count" id="nav-fail-count" style="background:var(--red-dim);color:var(--red);">—</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('heatmap', this)" id="nav-heatmap">
+                    <span class="nav-dot dot-gray"></span>
+                    Heatmap
+                </div>
+                <div class="nav-item" onclick="switchTab('timeline', this)" id="nav-timeline">
+                    <span class="nav-dot" style="background:var(--purple);"></span>
+                    Timeline
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Repositories</div>
+                <div id="sidebar-repo-list"></div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="token-input-wrap">
+                    <div class="token-label">GitHub PAT token</div>
+                    <input class="token-input" type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxx" />
+                </div>
+                <div class="token-input-wrap" style="margin-top:6px;">
+                    <div class="token-label">Owner or Owner/Repo (optional)</div>
+                    <input class="token-input" type="text" id="orgInput" placeholder="octocat or octocat/hello-world" />
+                </div>
+                <button class="connect-btn" id="connectBtn" onclick="handleConnect()">↗ Connect Live Data</button>
+                <button class="disconnect-btn" id="disconnectBtn" onclick="handleDisconnect()">✕ Disconnect</button>
+                <div id="connectStatus" style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:5px;"></div>
+            </div>
+        </aside>
+
+        <!-- ── Main ── -->
+        <main class="main" id="mainContent">
+            <!-- Disabled overlay -->
+            <div class="main-overlay" id="mainOverlay">
+                <div class="overlay-card">
+                    <div class="overlay-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" />
+                            <path d="M7 11V7a5 5 0 0110 0v4" />
+                        </svg>
+                    </div>
+                    <div class="overlay-title">Connect Your GitHub Token</div>
+                    <div class="overlay-sub">
+                        Enter a GitHub Personal Access Token<br />in the sidebar to unlock live data.<br />
+                        <span style="color:var(--text3);">Requires <code style="color:var(--amber);">repo</code> or
+                            <code style="color:var(--amber);">actions:read</code> scope.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="topbar">
+                <div class="topbar-title" id="topbar-title">overview · waiting for connection</div>
+                <div class="topbar-controls">
+                    <button class="refresh-btn" id="refreshBtn" onclick="refresh()" disabled title="Refresh data">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <polyline points="23 4 23 10 17 10" />
+                        <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
+                    </svg>
+                    Refresh
+                </button>
+                <select class="ctrl-select" id="repoFilter" onchange="onRepoFilterChange()" disabled>
+                    <option value="all">All repos</option>
+                </select>
+                <select class="ctrl-select" id="timeFilter" onchange="refresh()" disabled>
+                    <option value="7">Last 7 days</option>
+                    <option value="14">Last 14 days</option>
+                    <option value="30">Last 30 days</option>
+                </select>
+                <div class="live-badge demo-mode" id="liveBadge"><div class="live-dot"></div>demo</div>
+            </div>
+        </div>
+
+        <div class="content disabled" id="contentArea">
+
+            <!-- ── Overview Tab ── -->
+            <div class="tab-panel active" id="tab-overview">
+                <div class="metrics" id="metricsRow"></div>
+                <div class="two-col section fade-in-1">
+                    <div class="card">
+                        <div class="card-title">run outcomes</div>
+                        <div class="chart-wrap" style="height:200px;">
+                            <canvas id="outcomeChart" role="img" aria-label="Doughnut chart showing GitHub Actions run outcomes"></canvas>
+                        </div>
+                        <div id="outcomeLegend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">daily run volume</div>
+                        <div class="chart-wrap" style="height:200px;">
+                            <canvas id="volumeChart" role="img" aria-label="Bar chart of daily run volume"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="card section fade-in-2">
+                    <div class="card-title">avg duration trend by workflow</div>
+                    <div id="durationLegend" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;"></div>
+                    <div class="chart-wrap" style="height:220px;">
+                        <canvas id="durationChart" role="img" aria-label="Line chart showing average workflow duration over time"></canvas>
+                    </div>
+                </div>
+                <div class="card section fade-in-3">
+                    <div class="card-title">repository health scorecard</div>
+                    <div class="repo-grid" id="overviewRepoGrid"></div>
+                </div>
+            </div>
+
+            <!-- ── Repos Tab ── -->
+            <div class="tab-panel" id="tab-repos">
+                <div class="section">
+                    <div class="section-head">
+                        <span class="section-title">repository breakdown</span>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <span style="font-size:11px;font-family:var(--mono);color:var(--text3);">sort by</span>
+                            <select class="ctrl-select" id="repoSort" onchange="renderReposTab()"
+                            style="font-size:11px;padding:4px 22px 4px 8px;">
+                            <option value="health">health</option>
+                            <option value="runs">runs</option>
+                            <option value="compute">compute</option>
+                            <option value="failures">failures</option>
+                            <option value="duration">duration</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="repo-grid" id="reposTabGrid"></div>
+            </div>
+        </div>
+
+        <!-- ── All Runs Tab ── -->
+        <div class="tab-panel" id="tab-runs">
+            <div class="card section">
+                <div class="card-title">all workflow runs</div>
+                <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                    <select class="ctrl-select" id="runsStatusFilter" onchange="renderRunsTab()" style="font-size:11px;">
+                        <option value="all">all status</option>
+                        <option value="success">success</option>
+                        <option value="failed">failed</option>
+                        <option value="cancelled">cancelled</option>
+                        <option value="skipped">skipped</option>
+                    </select>
+                    <select class="ctrl-select" id="runsWfFilter" onchange="renderRunsTab()" style="font-size:11px;">
+                        <option value="all">all workflows</option>
+                    </select>
+                </div>
+                <div class="runs-table-wrap">
+                    <table class="runs-table">
+                        <thead>
+                            <tr>
+                                <th>status</th>
+                                <th>workflow</th>
+                                <th>repository</th>
+                                <th>branch</th>
+                                <th>duration</th>
+                                <th>queued</th>
+                                <th>ran</th>
+                            </tr>
+                        </thead>
+                        <tbody id="runsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Failures Tab ── -->
+        <div class="tab-panel" id="tab-failures">
+            <div class="two-col section">
+                <div class="card">
+                    <div class="card-title">failures by category</div>
+                    <div class="chart-wrap" style="height:200px;">
+                        <canvas id="failCatChart" role="img" aria-label="Horizontal bar chart of failure categories"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">flaky vs consistent</div>
+                    <div class="chart-wrap" style="height:200px;">
+                        <canvas id="flakyChart" role="img" aria-label="Doughnut showing flaky versus consistent failures"></canvas>
+                    </div>
+                    <div id="flakyLegend" style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;"></div>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-head"><span class="section-title">recent failures</span></div>
+                <div class="failure-cards" id="failureCards"></div>
+            </div>
+        </div>
+
+        <!-- ── Heatmap Tab ── -->
+        <div class="tab-panel" id="tab-heatmap">
+            <div class="card section">
+                <div class="section-head">
+                    <span class="card-title" style="margin-bottom:0;">activity heatmap — day × hour</span>
+                    <div style="display:flex;gap:6px;">
+                        <select class="ctrl-select" id="heatRepo" onchange="renderHeatmap()" style="font-size:11px;">
+                            <option value="all">all repos</option>
+                        </select>
+                        <select class="ctrl-select" id="heatMetric" onchange="renderHeatmap()" style="font-size:11px;">
+                            <option value="runs">run count</option>
+                            <option value="duration">avg duration</option>
+                            <option value="failures">failures</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="heatmapArea" style="margin-top:16px;overflow-x:auto;"></div>
+                <div class="heat-legend" id="heatLegend"></div>
+            </div>
+            <div class="two-col section">
+                <div class="card">
+                    <div class="card-title">queue wait vs execution time (weekly avg)</div>
+                    <div class="chart-wrap" style="height:220px;">
+                        <canvas id="queueChart" role="img" aria-label="Stacked bar chart of queue wait versus execution time per week"></canvas>
+                    </div>
+                    <div style="display:flex;gap:12px;margin-top:10px;">
+                        <span
+                        style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text3);"><span
+                        style="width:10px;height:10px;border-radius:2px;background:#f0a52b;display:inline-block;"></span>queue
+                    wait</span>
+                    <span
+                    style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text3);"><span
+                    style="width:10px;height:10px;border-radius:2px;background:#5b8dee;display:inline-block;"></span>execution</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">p95 duration by workflow</div>
+                <div class="chart-wrap" style="height:220px;">
+                    <canvas id="p95Chart" role="img" aria-label="Horizontal bar chart of p95 workflow durations"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- ── Timeline Tab ── -->
+        <div class="tab-panel" id="tab-timeline">
+
+            <!-- Controls row -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+                <select class="ctrl-select" id="tlRepoFilter" onchange="renderTimeline()" style="font-size:11px;">
+                    <option value="all">all repos</option>
+                </select>
+                <select class="ctrl-select" id="tlWfFilter" onchange="renderTimeline()" style="font-size:11px;">
+                    <option value="all">all workflows</option>
+                </select>
+                <select class="ctrl-select" id="tlStatusFilter" onchange="renderTimeline()" style="font-size:11px;">
+                    <option value="all">all statuses</option>
+                    <option value="success">success</option>
+                    <option value="failed">failed</option>
+                    <option value="cancelled">cancelled</option>
+                </select>
+                <select class="ctrl-select" id="tlGroup" onchange="renderTimeline()" style="font-size:11px;">
+                    <option value="workflow">colour by workflow</option>
+                    <option value="repo">colour by repo</option>
+                    <option value="status">colour by status</option>
+                </select>
+            </div>
+
+            <!-- Scatter: time → runtime -->
+            <div class="card section">
+                <div class="section-head">
+                    <span class="card-title" style="margin-bottom:0;">run start time vs runtime</span>
+                    <span style="font-size:11px;font-family:var(--mono);color:var(--text3);">each dot = one run · hover for details</span>
+                </div>
+                <div id="tlScatterLegend" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;"></div>
+                <div class="chart-wrap" style="height:320px;">
+                    <canvas id="tlScatterChart" role="img" aria-label="Scatter chart: x axis is date/time of run, y axis is runtime in minutes. Each dot represents one workflow run."></canvas>
+                </div>
+            </div>
+
+            <!-- Swimlane: per-workflow band area chart -->
+            <div class="card section">
+                <div class="section-head">
+                    <span class="card-title" style="margin-bottom:0;">runtime trend per workflow</span>
+                    <span style="font-size:11px;font-family:var(--mono);color:var(--text3);">daily avg · shaded band = min–max range</span>
+                </div>
+                <div id="tlSwimLegend" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;"></div>
+                <div class="chart-wrap" style="height:280px;">
+                    <canvas id="tlSwimChart" role="img" aria-label="Multi-line chart showing daily average runtime per workflow over time."></canvas>
+                </div>
+            </div>
+
+            <!-- Cumulative runtime bar: who costs the most over time -->
+            <div class="two-col section">
+                <div class="card">
+                    <div class="card-title">cumulative runtime by repo (mins)</div>
+                    <div class="chart-wrap" style="height:220px;">
+                        <canvas id="tlCumRepoChart" role="img" aria-label="Horizontal bar chart showing total compute minutes per repository."></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">runtime distribution (histogram)</div>
+                    <div class="chart-wrap" style="height:220px;">
+                        <canvas id="tlHistChart" role="img" aria-label="Histogram of run durations bucketed into ranges."></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Run-length table: longest runs -->
+            <div class="card section">
+                <div class="section-head">
+                    <span class="card-title" style="margin-bottom:0;">longest individual runs</span>
+                    <span style="font-size:11px;font-family:var(--mono);color:var(--text3);">top 20 by duration</span>
+                </div>
+                <div class="runs-table-wrap">
+                    <table class="runs-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>workflow</th>
+                                <th>repository</th>
+                                <th>branch</th>
+                                <th>status</th>
+                                <th>started</th>
+                                <th>duration</th>
+                                <th>vs avg</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tlLongestBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div><!-- /tab-timeline -->
+
+</div><!-- /content -->
+</main>
+</div><!-- /layout -->
+
+<script>
+    // ─── Global Application State ────────────────────────────────────────
+    const appState = {
+        isLive: false,
+        token: '',
+        owner: '', // e.g. "octocat" or "octocat/hello-world"
+        liveRuns: [], // all fetched runs (normalized)
+        repoList: [], // [{full_name, name, owner, ...}] from GitHub API
+        repoDefsDynamic: {}, // { repoKey: { key, label, bgCol, fgCol, desc } }
+        isFetching: false,
+        lastFetchTime: null,
+    };
+
+    // ─── Demo Data (fallback / initial placeholder) ──────────────────────
+    const REPOS_DEF_DEMO = [
+        { key: 'api-service', label: 'AP', bgCol: '#1a2a3d', fgCol: '#5b8dee', desc: 'Core REST & GraphQL API',
+            runBase: 45, durBase: 220, failRate: 0.09 },
+        { key: 'web-app', label: 'WA', bgCol: '#1a3028', fgCol: '#3ecf8e', desc: 'React frontend + SSR', runBase: 38,
+            durBase: 360, failRate: 0.15 },
+        { key: 'ml-pipeline', label: 'ML', bgCol: '#302a18', fgCol: '#f0a52b', desc: 'Model training & eval', runBase: 12,
+            durBase: 1800, failRate: 0.10 },
+        { key: 'infra-deploy', label: 'ID', bgCol: '#2d1a1a', fgCol: '#f05252', desc: 'Terraform & k8s deploy',
+            runBase: 20, durBase: 175, failRate: 0.19 },
+        { key: 'sdk-core', label: 'SK', bgCol: '#221a35', fgCol: '#a78bfa', desc: 'Client SDK – JS, Py, Go', runBase: 28,
+            durBase: 120, failRate: 0.025 },
+    ];
+
+    const WORKFLOWS_DEMO = {
+        'api-service': ['CI / test', 'Build & deploy', 'Security scan', 'Lint & format'],
+        'web-app': ['Build & deploy', 'E2E tests', 'Lighthouse CI', 'Lint & format'],
+        'ml-pipeline': ['Train model', 'Eval & benchmark', 'Data validation', 'Publish artifact'],
+        'infra-deploy': ['Plan & apply', 'Drift check', 'Secret rotation'],
+        'sdk-core': ['Unit tests (JS)', 'Unit tests (Py)', 'Unit tests (Go)', 'Publish SDK'],
+    };
+
+    const WF_DURS_DEMO = {
+        'CI / test': 4.1,
+        'Build & deploy': 7.5,
+        'Security scan': 2.3,
+        'Lint & format': 1.2,
+        'E2E tests': 12.4,
+        'Lighthouse CI': 3.1,
+        'Train model': 32,
+        'Eval & benchmark': 19,
+        'Data validation': 4.3,
+        'Publish artifact': 2.1,
+        'Plan & apply': 3.8,
+        'Drift check': 2.1,
+        'Secret rotation': 1.2,
+        'Unit tests (JS)': 2.1,
+        'Unit tests (Py)': 1.8,
+        'Unit tests (Go)': 1.4,
+        'Publish SDK': 3.2,
+    };
+
+    const FAIL_CAUSES_DEMO = {
+        'api-service': [
+            ['Test timeout', 41],
+            ['Dep install failed', 27],
+            ['OOM kill', 18],
+            ['Flaky network', 14]
+        ],
+        'web-app': [
+            ['E2E flake – Playwright', 44],
+            ['Build OOM', 24],
+            ['Missing env var', 18],
+            ['Runner disk full', 14]
+        ],
+        'ml-pipeline': [
+            ['Runner out of disk', 56],
+            ['GPU quota exceeded', 33],
+            ['Data schema drift', 11]
+        ],
+        'infra-deploy': [
+            ['State lock conflict', 41],
+            ['Cloud API rate limit', 31],
+            ['Missing secret', 21],
+            ['Timeout on plan', 7]
+        ],
+        'sdk-core': [
+            ['Intermittent registry timeout', 60],
+            ['Go module cache miss', 40]
+        ],
+    };
+
+    const BRANCHES_DEMO = ['main', 'develop', 'feature/auth', 'fix/perf', 'release/2.1', 'hotfix/null-check'];
+    const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const STATUS_POOL = ['success', 'success', 'success', 'success', 'success', 'failed', 'failed', 'cancelled',
+    'skipped'];
+
+    // ─── Demo Data Generator ─────────────────────────────────────────────
+    let seqSeed = 42;
+
+    function seqRand() { seqSeed = (seqSeed * 1664525 + 1013904223) & 0xffffffff; return (seqSeed >>> 0) /
+        4294967296; }
+
+    function sr(a, b) { return Math.floor(seqRand() * (b - a + 1)) + a; }
+
+    function genRuns() {
+        seqSeed = 42;
+        const runs = [];
+        const now = Date.now();
+        REPOS_DEF_DEMO.forEach(repo => {
+            for (let i = 0; i < 200; i++) {
+                const ts = now - sr(0, 30 * 86400) * 1000;
+                const wfs = WORKFLOWS_DEMO[repo.key];
+                const wf = wfs[sr(0, wfs.length - 1)];
+                const failed = seqRand() < repo.failRate;
+                const status = failed ? 'failed' : (seqRand() < 0.04 ? 'cancelled' : seqRand() < 0.03 ?
+                    'skipped' : 'success');
+                const dur = Math.max(20, Math.round((WF_DURS_DEMO[wf] || 3) * 60 * (0.7 + seqRand() * 0.7)));
+                const queue = sr(5, 180);
+                const causes = FAIL_CAUSES_DEMO[repo.key] || [];
+                const rnd = seqRand();
+                let cumPct = 0,
+                    cause = null;
+                const total = causes.reduce((s, c) => s + c[1], 0);
+                for (const [cl, pct] of causes) { cumPct += pct / total; if (rnd < cumPct) { cause = cl;
+                        break; } }
+                const flaky = status === 'failed' && seqRand() > 0.45;
+                runs.push({ ts, repo: repo.key, wf, status, dur, queue, cause, flaky, branch: BRANCHES_DEMO[sr(0,
+                        BRANCHES_DEMO.length - 1)] });
+            }
+        });
+        return runs;
+    }
+
+    // Start with demo data so the UI isn't completely empty
+    let ALL_RUNS = genRuns();
+
+    // ─── Dynamic Repo Color Generation ───────────────────────────────────
+    const REPO_COLORS = [
+        { bg: '#1a2a3d', fg: '#5b8dee' },
+        { bg: '#1a3028', fg: '#3ecf8e' },
+        { bg: '#302a18', fg: '#f0a52b' },
+        { bg: '#2d1a1a', fg: '#f05252' },
+        { bg: '#221a35', fg: '#a78bfa' },
+        { bg: '#1a2d2d', fg: '#38b2ac' },
+        { bg: '#2d1a2d', fg: '#d53f8c' },
+        { bg: '#1a1a2d', fg: '#667eea' },
+        { bg: '#2d2d1a', fg: '#ecc94b' },
+        { bg: '#1d2d1a', fg: '#48bb78' },
+    ];
+
+    function getRepoColor(index) {
+        const c = REPO_COLORS[index % REPO_COLORS.length];
+        return { bgCol: c.bg, fgCol: c.fg };
+    }
+
+    function buildRepoDefsDynamic() {
+        const defs = {};
+        const seen = new Set();
+        let colorIdx = 0;
+
+        // Build from live data runs first
+        appState.liveRuns.forEach(r => {
+            if (!seen.has(r.repo)) {
+                seen.add(r.repo);
+                const colors = getRepoColor(colorIdx);
+                const name = r.repo;
+                const parts = name.split('/');
+                const shortName = parts[parts.length - 1];
+                const label = shortName.substring(0, 2).toUpperCase();
+                defs[r.repo] = {
+                    key: r.repo,
+                    label,
+                    bgCol: colors.bgCol,
+                    fgCol: colors.fgCol,
+                    desc: name,
+                };
+                colorIdx++;
+            }
+        });
+
+        // Also add repos from repoList that might not have runs yet
+        appState.repoList.forEach(repo => {
+            const fullName = repo.full_name;
+            if (!seen.has(fullName)) {
+                seen.add(fullName);
+                const colors = getRepoColor(colorIdx);
+                const shortName = repo.name;
+                const label = shortName.substring(0, 2).toUpperCase();
+                defs[fullName] = {
+                    key: fullName,
+                    label,
+                    bgCol: colors.bgCol,
+                    fgCol: colors.fgCol,
+                    desc: fullName,
+                };
+                colorIdx++;
+            }
+        });
+
+        // Fallback to demo defs if nothing live
+        if (Object.keys(defs).length === 0 && !appState.isLive) {
+            REPOS_DEF_DEMO.forEach(r => {
+                defs[r.key] = { ...r };
+            });
+        }
+
+        appState.repoDefsDynamic = defs;
+        return defs;
+    }
+
+    function getRepoDefs() {
+        if (appState.isLive && Object.keys(appState.repoDefsDynamic).length > 0) {
+            return appState.repoDefsDynamic;
+        }
+        if (appState.isLive) {
+            return buildRepoDefsDynamic();
+        }
+        // Demo mode
+        const defs = {};
+        REPOS_DEF_DEMO.forEach(r => { defs[r.key] = { ...r }; });
+        return defs;
+    }
+
+    function getWorkflowsForRepo(repoKey) {
+        if (!appState.isLive) {
+            return WORKFLOWS_DEMO[repoKey] || [];
+        }
+        const wfSet = new Set();
+        appState.liveRuns.forEach(r => {
+            if (r.repo === repoKey) wfSet.add(r.wf);
+        });
+        return [...wfSet].sort();
+    }
+
+    function getWfDurFallback(wfName) {
+        if (!appState.isLive && WF_DURS_DEMO[wfName]) {
+            return WF_DURS_DEMO[wfName];
+        }
+        // For live data, compute from actual runs
+        const relevant = appState.liveRuns.filter(r => r.wf === wfName && r.status === 'success');
+        if (relevant.length > 0) {
+            return Math.round(relevant.reduce((a, r) => a + r.dur, 0) / relevant.length / 60 * 10) / 10;
+        }
+        return 3; // default fallback
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────
+    function getFiltered() {
+        const days = parseInt(document.getElementById('timeFilter').value || '7');
+        const repo = document.getElementById('repoFilter').value;
+        const cutoff = Date.now() - days * 86400 * 1000;
+        const source = appState.isLive ? appState.liveRuns : ALL_RUNS;
+        return source.filter(r => r.ts >= cutoff && (repo === 'all' || r.repo === repo));
+    }
+
+    function healthScore(runs, repo) {
+        const sub = repo === 'all' ? runs : runs.filter(r => r.repo === repo.key);
+        if (!sub.length) return 100;
+        const sr2 = sub.filter(r => r.status === 'success').length / sub.length;
+        const avgD = sub.reduce((a, r) => a + r.dur, 0) / sub.length;
+        const durPen = Math.min(avgD / 3600, 1) * 20;
+        return Math.max(0, Math.round(sr2 * 100 - durPen));
+    }
+
+    function healthStyle(s) { return s >= 90 ? { badge: 'badge-green', color: 'var(--green)' } : s >= 75 ? { badge: 'badge-amber',
+            color: 'var(--amber)' } : { badge: 'badge-red', color: 'var(--red)' }; }
+
+    function fmtDur(s) { if (s < 60) return `${s}s`; return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`; }
+
+    function timeAgo(ts) { const m = Math.round((Date.now() - ts) / 60000); if (m < 60) return `${m}m ago`; if (m <
+            1440) return `${Math.round(m / 60)}h ago`; return `${Math.round(m / 1440)}d ago`; }
+
+    function getDayBuckets(data) {
+        const days = parseInt(document.getElementById('timeFilter').value || '7');
+        const buckets = {};
+        for (let i = days - 1; i >= 0; i--) {
+            const d = new Date(Date.now() - i * 86400 * 1000);
+            buckets[d.toLocaleDateString('en', { month: 'short', day: 'numeric' })] = [];
+        }
+        data.forEach(r => {
+            const k = new Date(r.ts).toLocaleDateString('en', { month: 'short', day: 'numeric' });
+            if (buckets[k]) buckets[k].push(r);
+        });
+        return buckets;
+    }
+
+    // ─── Chart registry ──────────────────────────────────────────────────
+    const _charts = {};
+
+    function mkChart(id, cfg) {
+        if (_charts[id]) { _charts[id].destroy(); }
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+        _charts[id] = new Chart(ctx, cfg);
+    }
+
+    // ─── Render metrics strip ────────────────────────────────────────────
+    function renderMetrics(data) {
+        const total = data.length;
+        if (!total) {
+            document.getElementById('metricsRow').innerHTML =
+                '<div class="metric-card fade-in fade-in-1" style="grid-column:1/-1;text-align:center;"><div class="metric-label">no data</div><div class="metric-sub">No runs found for the selected period</div></div>';
+            document.getElementById('nav-fail-count').textContent = '0';
+            return;
+        }
+        const succ = data.filter(r => r.status === 'success').length;
+        const fail = data.filter(r => r.status === 'failed').length;
+        const sr = Math.round(succ / total * 100);
+        const avgD = Math.round(data.reduce((a, r) => a + r.dur, 0) / total);
+        const sorted = [...data].sort((a, b) => a.dur - b.dur);
+        const p95 = sorted[Math.floor(sorted.length * 0.95)]?.dur || 0;
+        const totalM = Math.round(data.reduce((a, r) => a + r.dur, 0) / 60);
+        const failRate = Math.round(fail / total * 100);
+
+        const col = v => v >= 90 ? 'var(--green)' : v >= 75 ? 'var(--amber)' : 'var(--red)';
+
+        document.getElementById('metricsRow').innerHTML = `
+        <div class="metric-card fade-in fade-in-1">
+          <div class="metric-label">total runs</div>
+          <div class="metric-value">${total.toLocaleString()}</div>
+          <div class="metric-sub">selected period</div>
+        </div>
+        <div class="metric-card fade-in fade-in-1">
+          <div class="metric-label">success rate</div>
+          <div class="metric-value" style="color:${col(sr)}">${sr}%</div>
+          <div class="metric-sub">${succ.toLocaleString()} passed</div>
+        </div>
+        <div class="metric-card fade-in fade-in-2">
+          <div class="metric-label">failures</div>
+          <div class="metric-value" style="color:${fail > 20 ? 'var(--red)' : 'var(--amber)'}">${fail}</div>
+          <div class="metric-sub">${failRate}% of runs</div>
+        </div>
+        <div class="metric-card fade-in fade-in-2">
+          <div class="metric-label">avg duration</div>
+          <div class="metric-value">${fmtDur(avgD)}</div>
+          <div class="metric-sub">per run</div>
+        </div>
+        <div class="metric-card fade-in fade-in-3">
+          <div class="metric-label">p95 duration</div>
+          <div class="metric-value" style="color:var(--amber)">${fmtDur(p95)}</div>
+          <div class="metric-sub">95th percentile</div>
+        </div>
+        <div class="metric-card fade-in fade-in-3">
+          <div class="metric-label">total compute</div>
+          <div class="metric-value">${Math.round(totalM / 60).toLocaleString()}h</div>
+          <div class="metric-sub">${totalM.toLocaleString()} minutes</div>
+        </div>`;
+        document.getElementById('nav-fail-count').textContent = fail;
+    }
+
+    // ─── Overview charts ─────────────────────────────────────────────────
+    function renderOverview(data) {
+        // Outcome donut
+        const counts = { success: 0, failed: 0, cancelled: 0, skipped: 0 };
+        data.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+        const ocColors = ['#3ecf8e', '#f05252', '#555b6a', '#f0a52b'];
+        mkChart('outcomeChart', {
+            type: 'doughnut',
+            data: { labels: ['Success', 'Failed', 'Cancelled', 'Skipped'], datasets: [{ data: Object.values(
+                        counts), backgroundColor: ocColors, borderWidth: 0, hoverOffset: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}` } } } }
+        });
+        const ocLabels = [
+            ['Success', counts.success, ocColors[0]],
+            ['Failed', counts.failed, ocColors[1]],
+            ['Cancelled', counts.cancelled, ocColors[2]],
+            ['Skipped', counts.skipped, ocColors[3]]
+        ];
+        document.getElementById('outcomeLegend').innerHTML = ocLabels.map(([l, v, c]) =>
+            `<span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text2)"><span style="width:10px;height:10px;border-radius:2px;background:${c};flex-shrink:0;display:inline-block;"></span>${l} ${v}</span>`
+        ).join('');
+
+        // Volume bar
+        const bkts = getDayBuckets(data);
+        mkChart('volumeChart', {
+            type: 'bar',
+            data: { labels: Object.keys(bkts), datasets: [{ label: 'Runs', data: Object.values(bkts).map(v => v
+                        .length), backgroundColor: 'rgba(91,141,238,0.5)', borderColor: '#5b8dee',
+                    borderWidth: 1, borderRadius: 3, borderSkipped: false
+                }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' } },
+                        grid: { display: false } }, y: { ticks: { color: '#555b6a', font: { size: 10,
+                            family: 'JetBrains Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
+        });
+
+        // Duration line
+        const wfNames = [...new Set(data.map(r => r.wf))].slice(0, 5);
+        const wfColors = ['#5b8dee', '#3ecf8e', '#f05252', '#f0a52b', '#a78bfa'];
+        const datasets = wfNames.map((wf, i) => ({
+            label: wf,
+            data: Object.values(bkts).map(runs => {
+                const sub = runs.filter(r => r.wf === wf && r.status === 'success');
+                return sub.length ? Math.round(sub.reduce((a, r) => a + r.dur, 0) / sub.length / 60 *
+                    10) / 10 : null;
+            }),
+            borderColor: wfColors[i],
+            backgroundColor: 'transparent',
+            tension: 0.4,
+            pointRadius: 3,
+            borderWidth: 2,
+            spanGaps: true,
+        }));
+        mkChart('durationChart', {
+            type: 'line',
+            data: { labels: Object.keys(bkts), datasets },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' } },
+                        grid: { display: false } }, y: { ticks: { color: '#555b6a', font: { size: 10,
+                            family: 'JetBrains Mono' }, callback: v => `${v}m` }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
+        });
+        document.getElementById('durationLegend').innerHTML = wfNames.map((n, i) =>
+            `<span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text2)"><span style="width:10px;height:2px;background:${wfColors[i]};display:inline-block;"></span>${n}</span>`
+        ).join('');
+
+        // Overview repo scorecard
+        renderRepoGrid('overviewRepoGrid', data, true);
+    }
+
+    // ─── Repo grid (shared renderer) ─────────────────────────────────────
+    let expandedRepos = {};
+
+    function renderRepoGrid(containerId, data, compact = false) {
+        const sort = !compact ? (document.getElementById('repoSort')?.value || 'health') : 'health';
+        const repoDefs = getRepoDefs();
+        const repos = Object.values(repoDefs).sort((a, b) => {
+            if (sort === 'health') return healthScore(data, b) - healthScore(data, a);
+            if (sort === 'runs') return data.filter(r => r.repo === b.key).length - data.filter(r => r.repo === a
+                .key).length;
+            if (sort === 'compute') return data.filter(r => r.repo === b.key).reduce((s, r) => s + r.dur, 0) - data
+                .filter(r => r.repo === a.key).reduce((s, r) => s + r.dur, 0);
+            if (sort === 'failures') return data.filter(r => r.repo === b.key && r.status === 'failed').length - data
+                .filter(r => r.repo === a.key && r.status === 'failed').length;
+            if (sort === 'duration') {
+                const da = data.filter(r => r.repo === a.key),
+                    db = data.filter(r => r.repo === b.key);
+                return (db.length ? db.reduce((s, r) => s + r.dur, 0) / db.length : 0) - (da.length ? da.reduce(
+                    (s, r) => s + r.dur, 0) / da.length : 0);
+            }
+            return 0;
+        });
+
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        container.innerHTML = repos.map(repo => {
+            const runs = data.filter(r => r.repo === repo.key);
+            const total = runs.length;
+            const succ = runs.filter(r => r.status === 'success').length;
+            const fail = runs.filter(r => r.status === 'failed').length;
+            const avgD = total ? Math.round(runs.reduce((a, r) => a + r.dur, 0) / total) : 0;
+            const p95 = total ? [...runs].sort((a, b) => a.dur - b.dur)[Math.floor(total * 0.95)]?.dur || 0 :
+            0;
+            const computeM = Math.round(runs.reduce((a, r) => a + r.dur, 0) / 60);
+            const hs = healthScore(data, repo);
+            const hstyle = healthStyle(hs);
+            const fr = total ? Math.round(fail / total * 100) : 0;
+            const isOpen = expandedRepos[`${containerId}_${repo.key}`];
+
+            // sparkline (7 day counts)
+            const days7 = [];
+            const now = Date.now();
+            for (let i = 6; i >= 0; i--) {
+                const s = now - i * 86400 * 1000,
+                    e = now - (i - 1) * 86400 * 1000;
+                const dr = runs.filter(r => r.ts >= s && r.ts < e);
+                days7.push({ count: dr.length, fail: dr.filter(r => r.status === 'failed').length });
+            }
+            const maxSp = Math.max(...days7.map(d => d.count), 1);
+            const sparkBars = days7.map(d => {
+                const h = Math.max(3, Math.round(d.count / maxSp * 24));
+                const c = d.fail > 0 ? '#f05252' : '#3ecf8e';
+                return `<div class="spark-bar" style="height:${h}px;background:${c};opacity:0.75;"></div>`;
+            }).join('');
+
+            // workflows
+            const wfs = getWorkflowsForRepo(repo.key);
+            const wfMaxDur = Math.max(...wfs.map(w => getWfDurFallback(w)), 1);
+            const wfRows = wfs.map(wf => {
+                const wfRuns = runs.filter(r => r.wf === wf && r.status === 'success');
+                const wfAvg = wfRuns.length ? Math.round(wfRuns.reduce((a, r) => a + r.dur, 0) /
+                    wfRuns.length / 60 * 10) / 10 : getWfDurFallback(wf);
+                const wfFail = runs.filter(r => r.wf === wf && r.status === 'failed').length;
+                const stColor = wfFail > 3 ? '#f05252' : wfFail > 0 ? '#f0a52b' : '#3ecf8e';
+                const pct = Math.round(wfAvg / wfMaxDur * 100);
+                return `<tr>
+              <td><span class="status-dot" style="background:${stColor};display:inline-block;"></span></td>
+              <td style="color:var(--text);">${wf}</td>
+              <td><div class="dur-bar-wrap"><div class="dur-track"><div class="dur-fill" style="width:${pct}%;"></div></div><span class="dur-val">${wfAvg}m</span></div></td>
+              <td><span class="${wfFail > 3 ? 'badge-red' : wfFail > 0 ? 'badge-amber' : 'badge-green'} badge">${wfFail} fails</span></td>
+            </tr>`;
+            }).join('');
+
+            // causes / top failing workflows
+            const failCauses = [];
+            if (fail > 0 && appState.isLive) {
+                const failByWf = {};
+                runs.filter(r => r.status === 'failed').forEach(r => {
+                    failByWf[r.wf] = (failByWf[r.wf] || 0) + 1;
+                });
+                const totalFails = fail;
+                failCauses.push(...Object.entries(failByWf)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 4)
+                    .map(([wf, count]) => [wf, Math.round(count / totalFails * 100)])
+                );
+            } else if (fail > 0 && !appState.isLive) {
+                const causes = FAIL_CAUSES_DEMO[repo.key] || [];
+                failCauses.push(...causes);
+            }
+
+            const causeRows = failCauses.map(([label, pct]) => `
+            <div class="cause-item">
+              <div class="cause-bar-track" style="flex:0 0 80px;"><div class="cause-bar-fill" style="width:${pct}%;"></div></div>
+              <span class="cause-label" style="font-size:11px;">${label}</span>
+              <span class="cause-pct">${pct}%</span>
+            </div>`).join('');
+
+            const detailBlock = isOpen ? `
+          <div class="repo-detail" style="display:block;">
+            <div class="detail-metrics">
+              <div class="d-metric"><div class="d-metric-label">total runs</div><div class="d-metric-val">${total}</div><div class="d-metric-sub">selected period</div></div>
+              <div class="d-metric"><div class="d-metric-label">avg duration</div><div class="d-metric-val">${fmtDur(avgD)}</div><div class="d-metric-sub">p95: ${fmtDur(p95)}</div></div>
+              <div class="d-metric"><div class="d-metric-label">failure rate</div><div class="d-metric-val" style="color:${fr > 15 ? 'var(--red)' : fr > 8 ? 'var(--amber)' : 'var(--green)'}">${fr}%</div><div class="d-metric-sub">${fail} failed</div></div>
+              <div class="d-metric"><div class="d-metric-label">compute</div><div class="d-metric-val">${computeM.toLocaleString()}m</div><div class="d-metric-sub">~${Math.round(computeM / 60)}h</div></div>
+            </div>
+            <div style="margin-bottom:10px;">
+              <div class="card-title" style="margin-bottom:10px;">workflows</div>
+              <table class="wf-table">
+                <thead><tr><th></th><th>workflow</th><th>avg duration</th><th>status</th></tr></thead>
+                <tbody>${wfRows}</tbody>
+              </table>
+            </div>
+            ${fail > 0 ? `<div class="failure-box">
+              <div class="failure-box-title">top failure patterns · ${fail} failures total</div>
+              <div class="cause-list">${causeRows}</div>
+            </div>` : ''}
+          </div>` :
+                `<div class="repo-detail"></div>`;
+
+            return `<div class="repo-row ${isOpen ? 'open' : ''}" id="rrow-${containerId}-${repo.key.replace(/[^a-zA-Z0-9]/g, '_')}">
+            <div class="repo-summary" onclick="toggleRepo('${containerId}','${repo.key}')">
+              <div class="repo-avatar" style="background:${repo.bgCol};color:${repo.fgCol};">${repo.label}</div>
+              <div class="repo-info">
+                <div class="repo-name">${repo.key}</div>
+                <div class="repo-desc">${repo.desc}</div>
+              </div>
+              <div class="repo-stats">
+                <div class="repo-stat">
+                  <div class="repo-stat-val" style="color:${hstyle.color}">${hs}</div>
+                  <div class="repo-stat-label">health</div>
+                </div>
+                <div class="repo-stat">
+                  <div class="repo-stat-val" style="color:${fr > 15 ? 'var(--red)' : fr > 8 ? 'var(--amber)' : 'var(--text)'}">${fr}%</div>
+                  <div class="repo-stat-label">fail rate</div>
+                </div>
+                <div class="repo-stat">
+                  <div class="repo-stat-val">${total}</div>
+                  <div class="repo-stat-label">runs</div>
+                </div>
+                <div class="repo-stat" style="min-width:48px;">
+                  <div class="repo-stat-val">${Math.round(computeM / 60)}h</div>
+                  <div class="repo-stat-label">compute</div>
+                </div>
+                <div class="sparkline">${sparkBars}</div>
+              </div>
+              <svg class="chevron-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <path d="M2.5 5l4.5 4 4.5-4"/>
+              </svg>
+            </div>
+            ${detailBlock}
+          </div>`;
+        }).join('');
+    }
+
+    function toggleRepo(containerId, repoKey) {
+        const k = `${containerId}_${repoKey}`;
+        expandedRepos[k] = !expandedRepos[k];
+        const data = getFiltered();
+        renderRepoGrid(containerId, data, containerId === 'overviewRepoGrid');
+    }
+
+    // ─── Repos Tab ───────────────────────────────────────────────────────
+    function renderReposTab() {
+        renderRepoGrid('reposTabGrid', getFiltered(), false);
+    }
+
+    // ─── Runs Table ──────────────────────────────────────────────────────
+    function renderRunsTab() {
+        const data = getFiltered();
+        const statusF = document.getElementById('runsStatusFilter').value;
+        const wfF = document.getElementById('runsWfFilter').value;
+        const filtered = data
+            .filter(r => (statusF === 'all' || r.status === statusF) && (wfF === 'all' || r.wf === wfF))
+            .sort((a, b) => b.ts - a.ts)
+            .slice(0, 80);
+
+        const stBadge = { success: 'badge-green', failed: 'badge-red', cancelled: 'badge-gray',
+        skipped: 'badge-amber' };
+        const repoDefs = getRepoDefs();
+
+        document.getElementById('runsTableBody').innerHTML = filtered.map(r => `
+        <tr>
+          <td><span class="badge ${stBadge[r.status] || 'badge-gray'}">${r.status}</span></td>
+          <td class="run-name">${r.wf}</td>
+          <td><span style="color:${(repoDefs[r.repo] || {}).fgCol || 'var(--text2)'};">${r.repo}</span></td>
+          <td class="run-branch">${r.branch}</td>
+          <td>${fmtDur(r.dur)}</td>
+          <td style="color:var(--text3)">${r.queue}s</td>
+          <td style="color:var(--text3)">${timeAgo(r.ts)}</td>
+        </tr>`).join('');
+
+        // Populate workflow filter dynamically
+        const wfFilter = document.getElementById('runsWfFilter');
+        const currentWfVal = wfFilter.value;
+        const allWfs = [...new Set(data.map(r => r.wf))].sort();
+        wfFilter.innerHTML = '<option value="all">all workflows</option>' +
+            allWfs.map(w => `<option value="${w.replace(/"/g, '&quot;')}">${w}</option>`).join('');
+        if ([...wfFilter.options].some(o => o.value === currentWfVal)) {
+            wfFilter.value = currentWfVal;
+        }
+    }
+
+    // ─── Failure Analysis ────────────────────────────────────────────────
+    function renderFailures(data) {
+        const failed = data.filter(r => r.status === 'failed');
+
+        // Categories - classify by workflow name patterns
+        const cats = { test: 0, dep: 0, infra: 0, build: 0, network: 0, config: 0, other: 0 };
+        const catPatterns = [
+            { cat: 'test', patterns: ['test', 'e2e', 'lint', 'check', 'verify', 'validate', 'spec'] },
+            { cat: 'build', patterns: ['build', 'compile', 'bundle', 'package', 'docker', 'container'] },
+            { cat: 'deploy', patterns: ['deploy', 'release', 'publish', 'apply', 'plan'] },
+            { cat: 'infra', patterns: ['infra', 'terraform', 'k8s', 'kubernetes', 'provision'] },
+            { cat: 'network', patterns: ['network', 'dns', 'proxy', 'timeout', 'registry'] },
+            { cat: 'config', patterns: ['config', 'secret', 'env', 'variable', 'setting'] },
+        ];
+
+        failed.forEach(r => {
+            const wfLower = r.wf.toLowerCase();
+            let matched = false;
+            for (const { cat, patterns } of catPatterns) {
+                if (patterns.some(p => wfLower.includes(p))) {
+                    cats[cat] = (cats[cat] || 0) + 1;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) cats['other'] = (cats['other'] || 0) + 1;
+        });
+
+        const catLabels = ['Tests', 'Build', 'Deploy', 'Infra', 'Network', 'Config', 'Other'];
+        const catValues = [cats.test || 0, cats.build || 0, cats.deploy || 0, cats.infra || 0, cats.network || 0,
+            cats.config || 0, cats.other || 0
+        ];
+        const catColors = ['#f05252', '#f0a52b', '#5b8dee', '#f05252', '#5b8dee', '#f0a52b', '#555b6a'];
+
+        mkChart('failCatChart', {
+            type: 'bar',
+            data: {
+                labels: catLabels,
+                datasets: [{ data: catValues, backgroundColor: catColors, borderRadius: 3,
+                    borderSkipped: false }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' } },
+                        grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#8b909e',
+                            font: { size: 11, family: 'JetBrains Mono' } }, grid: { display: false } } } }
+        });
+
+        const flaky = failed.filter(r => r.flaky).length;
+        const consistent = failed.length - flaky;
+        mkChart('flakyChart', {
+            type: 'doughnut',
+            data: { labels: ['Consistent', 'Flaky'], datasets: [{ data: [consistent, flaky],
+                    backgroundColor: ['#f05252', '#f0a52b'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+        });
+        document.getElementById('flakyLegend').innerHTML = `
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text2)"><span style="width:10px;height:10px;border-radius:2px;background:#f05252;display:inline-block;"></span>Consistent ${consistent}</span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text2)"><span style="width:10px;height:10px;border-radius:2px;background:#f0a52b;display:inline-block;"></span>Flaky ${flaky}</span>`;
+
+        // Failure cards
+        const recent = [...failed].sort((a, b) => b.ts - a.ts).slice(0, 8);
+        const repoDefs = getRepoDefs();
+
+        document.getElementById('failureCards').innerHTML = recent.length === 0 ?
+            '<div class="empty">No recent failures 🎉</div>' :
+            recent.map(run => {
+                const rd = repoDefs[run.repo] || { fgCol: 'var(--text2)' };
+                const failInfo = [
+                    { label: `Workflow: ${run.wf}`, color: '#f05252' },
+                    { label: `Branch: ${run.branch}`, color: '#f0a52b' },
+                    { label: `Duration: ${fmtDur(run.dur)}`, color: '#555b6a' },
+                ];
+
+                return `<div class="fail-card">
+            <div class="fail-card-top">
+              <div>
+                <div class="fail-card-name">${run.wf}</div>
+                <div class="fail-card-meta">
+                  <span style="color:${rd.fgCol}">${run.repo}</span>
+                  <span style="color:var(--text3)"> · ${run.branch} · ${fmtDur(run.dur)}</span>
+                  ${run.flaky ? '<span class="badge badge-amber" style="margin-left:6px;">flaky</span>' : ''}
+                </div>
+              </div>
+              <div class="fail-card-time">${timeAgo(run.ts)}</div>
+            </div>
+            <div class="causes-header">run details</div>
+            <div class="fail-causes">${failInfo.map(fi => `
+              <div class="fc-item">
+                <div class="fc-dot" style="background:${fi.color}"></div>
+                <span class="fc-label">${fi.label}</span>
+              </div>`).join('')}
+            </div>
+          </div>`;
+            }).join('');
+    }
+
+    // ─── Heatmap ─────────────────────────────────────────────────────────
+    function renderHeatmap() {
+        const hRepo = document.getElementById('heatRepo').value;
+        const hMetric = document.getElementById('heatMetric').value;
+        const days = parseInt(document.getElementById('timeFilter').value || '7');
+        const cutoff = Date.now() - days * 86400 * 1000;
+        const source = appState.isLive ? appState.liveRuns : ALL_RUNS;
+        const relevant = source.filter(r => r.ts >= cutoff && (hRepo === 'all' || r.repo === hRepo));
+
+        const matrix = DAYS.map(() => Array(24).fill(0));
+        const cnt = DAYS.map(() => Array(24).fill(0));
+        relevant.forEach(r => {
+            const d = new Date(r.ts),
+                day = (d.getDay() + 6) % 7,
+                h = d.getHours();
+            if (hMetric === 'runs') matrix[day][h]++;
+            else if (hMetric === 'duration') { matrix[day][h] += Math.round(r.dur / 60);
+                cnt[day][h]++; } else if (hMetric === 'failures' && r.status === 'failed') matrix[day][h]++;
+        });
+        if (hMetric === 'duration') DAYS.forEach((_, di) => { for (let h = 0; h < 24; h++) if (cnt[di][h]) matrix[
+                di][h] = Math.round(matrix[di][h] / cnt[di][h]); });
+
+        const flat = matrix.flat();
+        const maxV = Math.max(...flat, 1);
+        const heatRamps = ['#1a1e25', '#1a2a3d', '#1a3864', '#1d4f8a', '#2563b0', '#3a7bd5', '#5b8dee'];
+
+        function heatColor(v) { const idx = Math.floor(v / maxV * (heatRamps.length - 1)); return heatRamps[Math.min(
+                idx, heatRamps.length - 1)]; }
+
+        const hourLabels = [0, 3, 6, 9, 12, 15, 18, 21];
+        const hourRow =
+            `<div class="heatmap-hours">${Array(24).fill(0).map((_, h) => `<div class="hhour">${hourLabels.includes(h) ? h + 'h' : ''}</div>`).join('')}</div>`;
+
+        const rows = DAYS.map((day, di) => `<div class="heatmap-row">${Array(24).fill(0).map((_, h) => {
+        const v = matrix[di][h];
+        const tip = `${day} ${h}:00 → ${v}${hMetric === 'duration' ? 'm' : ''}`;
+        return `<div class="hcell" style="background:${heatColor(v)}" data-tip="${tip}"></div>`;
+      }).join('')}</div>`).join('');
+
+        const dayCol =
+            `<div style="display:flex;flex-direction:column;gap:2px;padding-top:20px;margin-right:6px;">${DAYS.map(d => `<div style="font-size:10px;font-family:var(--mono);color:var(--text3);height:14px;display:flex;align-items:center;">${d}</div>`).join('')}</div>`;
+
+        document.getElementById('heatmapArea').innerHTML =
+            `<div style="display:flex;">${dayCol}<div style="flex:1;overflow-x:auto;">${hourRow}<div style="display:flex;flex-direction:column;gap:2px;">${rows}</div></div></div>`;
+
+        document.getElementById('heatLegend').innerHTML =
+            `<span class="heat-leg-label">less</span>${heatRamps.map(c => `<div class="heat-leg-cell" style="background:${c};"></div>`).join('')}<span class="heat-leg-label" style="margin-left:4px;">more</span>`;
+
+        // Update heat repo dropdown
+        const heatRepoSelect = document.getElementById('heatRepo');
+        const currentVal = heatRepoSelect.value;
+        const repoDefs = getRepoDefs();
+        heatRepoSelect.innerHTML = '<option value="all">all repos</option>' +
+            Object.keys(repoDefs).map(k => `<option value="${k}">${k}</option>`).join('');
+        if ([...heatRepoSelect.options].some(o => o.value === currentVal)) {
+            heatRepoSelect.value = currentVal;
+        }
+    }
+
+    function renderQueueChart() {
+        const source = appState.isLive ? appState.liveRuns : ALL_RUNS;
+        const now = Date.now();
+        const weeks = [];
+        for (let w = 3; w >= 0; w--) {
+            const start = now - (w + 1) * 7 * 86400 * 1000;
+            const end = now - w * 7 * 86400 * 1000;
+            const wr = source.filter(r => r.ts >= start && r.ts < end);
+            const avgQ = wr.length ? Math.round(wr.reduce((a, r) => a + r.queue, 0) / wr.length) : 0;
+            const avgE = wr.length ? Math.round(wr.reduce((a, r) => a + r.dur, 0) / wr.length) : 0;
+            weeks.push({ label: `Wk ${4 - w}`, queue: avgQ, exec: avgE });
+        }
+
+        mkChart('queueChart', {
+            type: 'bar',
+            data: {
+                labels: weeks.map(w => w.label),
+                datasets: [
+                    { label: 'Queue wait', data: weeks.map(w => w.queue), backgroundColor: '#f0a52b',
+                        borderRadius: 3, stack: 'a' },
+                    { label: 'Execution', data: weeks.map(w => w.exec), backgroundColor: '#5b8dee',
+                        borderRadius: 3, stack: 'a' },
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { stacked: true, ticks: { color: '#555b6a', font: { size: 10,
+                            family: 'JetBrains Mono' } }, grid: { display: false } }, y: { stacked: true,
+                        ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' },
+                            callback: v => `${v}s` }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
+        });
+
+        const relevant = source.filter(r => r.status === 'success');
+        const wfNames = [...new Set(relevant.map(r => r.wf))].slice(0, 7);
+        const p95Data = wfNames.map(wf => {
+            const wfRuns = relevant.filter(r => r.wf === wf).map(r => r.dur).sort((a, b) => a - b);
+            return wfRuns.length ? Math.round(wfRuns[Math.floor(wfRuns.length * 0.95)] / 60) : 0;
+        });
+
+        mkChart('p95Chart', {
+            type: 'bar',
+            data: {
+                labels: wfNames,
+                datasets: [{ data: p95Data, backgroundColor: 'rgba(167,139,250,0.5)', borderColor: '#a78bfa',
+                    borderWidth: 1, borderRadius: 3, borderSkipped: false
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' },
+                        callback: v => `${v}m` }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#8b909e', font: { size: 10, family: 'JetBrains Mono' } },
+                        grid: { display: false } } } }
+        });
+    }
+
+    // ─── Sidebar repo list ───────────────────────────────────────────────
+    function renderSidebarRepos() {
+        const data = getFiltered();
+        const repoDefs = getRepoDefs();
+        const repos = Object.values(repoDefs);
+        document.getElementById('sidebar-repo-list').innerHTML = repos.map(r => {
+            const runs = data.filter(d => d.repo === r.key);
+            const hs = healthScore(data, r);
+            const hcol = hs >= 90 ? 'var(--green)' : hs >= 75 ? 'var(--amber)' : 'var(--red)';
+            return `<div class="nav-item" onclick="filterToRepo('${r.key}')">
+            <span style="width:8px;height:8px;border-radius:50%;background:${r.fgCol};flex-shrink:0;display:inline-block;"></span>
+            <span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.key}</span>
+            <span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:${hcol};">${hs}</span>
+          </div>`;
+        }).join('');
+        document.getElementById('nav-repo-count').textContent = repos.length;
+    }
+
+    function filterToRepo(key) {
+        document.getElementById('repoFilter').value = key;
+        if (appState.isLive) {
+            onRepoFilterChange();
+        } else {
+            refresh();
+        }
+    }
+
+    // ─── Populate repo dropdown ──────────────────────────────────────────
+    function populateRepoDropdown() {
+        const repoFilter = document.getElementById('repoFilter');
+        const currentVal = repoFilter.value;
+        const repoDefs = getRepoDefs();
+        const repoKeys = Object.keys(repoDefs).sort();
+        repoFilter.innerHTML = '<option value="all">All repos</option>' +
+            repoKeys.map(k => `<option value="${k}">${k}</option>`).join('');
+        if ([...repoFilter.options].some(o => o.value === currentVal)) {
+            repoFilter.value = currentVal;
+        } else {
+            repoFilter.value = 'all';
+        }
+        // Also update heatmap repo dropdown
+        const heatRepo = document.getElementById('heatRepo');
+        const hCurrent = heatRepo.value;
+        heatRepo.innerHTML = '<option value="all">all repos</option>' +
+            repoKeys.map(k => `<option value="${k}">${k}</option>`).join('');
+        if ([...heatRepo.options].some(o => o.value === hCurrent)) {
+            heatRepo.value = hCurrent;
+        }
+        // Also update timeline repo dropdown
+        const tlRepo = document.getElementById('tlRepoFilter');
+        if (tlRepo) {
+            const tlCurrent = tlRepo.value;
+            tlRepo.innerHTML = '<option value="all">all repos</option>' +
+                repoKeys.map(k => `<option value="${k}">${k}</option>`).join('');
+            if ([...tlRepo.options].some(o => o.value === tlCurrent)) tlRepo.value = tlCurrent;
+        }
+        // Also update timeline workflow dropdown
+        const tlWf = document.getElementById('tlWfFilter');
+        if (tlWf) {
+            const tlWfCurrent = tlWf.value;
+            const source = appState.isLive ? appState.liveRuns : ALL_RUNS;
+            const wfSet = [...new Set(source.map(r => r.wf))].sort();
+            tlWf.innerHTML = '<option value="all">all workflows</option>' +
+                wfSet.map(w => `<option value="${w}">${w}</option>`).join('');
+            if ([...tlWf.options].some(o => o.value === tlWfCurrent)) tlWf.value = tlWfCurrent;
+        }
+    }
+
+    // ─── Tab switching ───────────────────────────────────────────────────
+    let activeTab = 'overview';
+    const tabTitles = { overview: 'overview', repos: 'repositories', runs: 'all runs', failures: 'failure analysis',
+        heatmap: 'heatmap & timing', timeline: 'timeline & runtimes' };
+
+    function switchTab(tab, el) {
+        if (!appState.isLive && tab !== 'overview') {
+            // In demo mode, allow all tabs (they work with demo data)
+        }
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        const panel = document.getElementById('tab-' + tab);
+        if (panel) panel.classList.add('active');
+        if (el) el.classList.add('active');
+        activeTab = tab;
+        const modeLabel = appState.isLive ? 'live' : 'demo data';
+        document.getElementById('topbar-title').textContent = `${tabTitles[tab]} · ${modeLabel}`;
+        refreshCurrentTab();
+    }
+
+    // ─── Refresh ─────────────────────────────────────────────────────────
+    function refreshCurrentTab() {
+        const data = getFiltered();
+        renderMetrics(data);
+        renderSidebarRepos();
+        if (activeTab === 'overview') renderOverview(data);
+        else if (activeTab === 'repos') renderReposTab();
+        else if (activeTab === 'runs') renderRunsTab();
+        else if (activeTab === 'failures') renderFailures(data);
+        else if (activeTab === 'heatmap') { renderHeatmap();
+            renderQueueChart(); }
+        else if (activeTab === 'timeline') renderTimeline();
+        populateRepoDropdown();
+    }
+
+    function refresh() {
+        if (appState.isFetching) return;
+        if (appState.isLive && appState.token) {
+            // Re-fetch from API
+            fetchAllLiveRuns().then(() => refreshCurrentTab()).catch(err => {
+                console.error('Refresh error:', err);
+                refreshCurrentTab(); // Still render with whatever data we have
+            });
+        } else {
+            refreshCurrentTab();
+        }
+    }
+
+    function onRepoFilterChange() {
+        if (!appState.isLive) {
+            refresh();
+            return;
+        }
+        if (appState.isFetching) return;
+        fetchAllLiveRuns().then(() => refreshCurrentTab()).catch(err => {
+            console.error('Repo filter change error:', err);
+            refreshCurrentTab();
+        });
+    }
+
+    // ─── Timeline Tab ─────────────────────────────────────────────────────
+    function renderTimeline() {
+        const data = getFiltered();
+
+        // Apply timeline-local filters
+        const tlRepo   = document.getElementById('tlRepoFilter')?.value   || 'all';
+        const tlWf     = document.getElementById('tlWfFilter')?.value     || 'all';
+        const tlStatus = document.getElementById('tlStatusFilter')?.value || 'all';
+        const tlGroup  = document.getElementById('tlGroup')?.value        || 'workflow';
+
+        let tdata = data;
+        if (tlRepo   !== 'all') tdata = tdata.filter(r => r.repo   === tlRepo);
+        if (tlWf     !== 'all') tdata = tdata.filter(r => r.wf     === tlWf);
+        if (tlStatus !== 'all') tdata = tdata.filter(r => r.status === tlStatus);
+
+        const STATUS_COLS = { success: '#3ecf8e', failed: '#f05252', cancelled: '#f0a52b', skipped: '#555b6a' };
+        const PALETTE = ['#5b8dee','#3ecf8e','#f0a52b','#f05252','#a78bfa','#38b2ac','#d53f8c','#ecc94b','#48bb78','#667eea','#fc8181','#63b3ed'];
+
+        // ── Build colour groups ──────────────────────────────────────────
+        let groupKeys, colorMap;
+        if (tlGroup === 'status') {
+            groupKeys = [...new Set(tdata.map(r => r.status))].sort();
+            colorMap = Object.fromEntries(groupKeys.map(k => [k, STATUS_COLS[k] || '#888']));
+        } else if (tlGroup === 'repo') {
+            groupKeys = [...new Set(tdata.map(r => r.repo))].sort();
+            colorMap = Object.fromEntries(groupKeys.map((k, i) => [k, PALETTE[i % PALETTE.length]]));
+        } else {
+            groupKeys = [...new Set(tdata.map(r => r.wf))].sort();
+            colorMap = Object.fromEntries(groupKeys.map((k, i) => [k, PALETTE[i % PALETTE.length]]));
+        }
+
+        function groupOf(r) { return tlGroup === 'status' ? r.status : tlGroup === 'repo' ? r.repo : r.wf; }
+
+        // ── Scatter: x=timestamp, y=duration in minutes ──────────────────
+        const scatterDatasets = groupKeys.map(gk => ({
+            label: gk,
+            data: tdata.filter(r => groupOf(r) === gk).map(r => ({
+                x: r.ts,
+                y: Math.round(r.dur / 6) / 10,
+                _r: r
+            })),
+            backgroundColor: colorMap[gk] + 'cc',
+            borderColor: colorMap[gk],
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            borderWidth: 1,
+        }));
+
+        mkChart('tlScatterChart', {
+            type: 'line',
+            data: { datasets: scatterDatasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: ctx => {
+                                const r = ctx[0]?.raw?._r;
+                                return r ? new Date(r.ts).toLocaleString('en', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                            },
+                            label: ctx => {
+                                const r = ctx.raw?._r;
+                                if (!r) return '';
+                                return [`${r.wf}`, `repo: ${r.repo}`, `duration: ${fmtDur(r.dur)}`, `status: ${r.status}`, `branch: ${r.branch}`];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        ticks: {
+                            color: '#555b6a',
+                            font: { size: 10, family: 'JetBrains Mono' },
+                            callback: v => new Date(v).toLocaleDateString('en', { month:'short', day:'numeric' }),
+                            maxTicksLimit: 10
+                        },
+                        grid: { color: 'rgba(255,255,255,0.04)' }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#555b6a',
+                            font: { size: 10, family: 'JetBrains Mono' },
+                            callback: v => `${v}m`
+                        },
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        title: { display: true, text: 'duration (min)', color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' } }
+                    }
+                }
+            }
+        });
+
+        // Scatter legend
+        document.getElementById('tlScatterLegend').innerHTML = groupKeys.map(k =>
+            `<span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text2)"><span style="width:8px;height:8px;border-radius:50%;background:${colorMap[k]};display:inline-block;flex-shrink:0;"></span>${k}</span>`
+        ).join('');
+
+        // ── Swimlane: daily avg runtime per workflow ──────────────────────
+        const bkts = getDayBuckets(tdata);
+        const labels = Object.keys(bkts);
+
+        const wfKeys = [...new Set(tdata.map(r => r.wf))].slice(0, 8);
+        const wfColors = wfKeys.map((_, i) => PALETTE[i % PALETTE.length]);
+
+        const swimDatasets = wfKeys.map((wf, i) => ({
+            label: wf,
+            data: labels.map(day => {
+                const runs = (bkts[day] || []).filter(r => r.wf === wf && r.status === 'success');
+                return runs.length ? Math.round(runs.reduce((a, r) => a + r.dur, 0) / runs.length / 6) / 10 : null;
+            }),
+            borderColor: wfColors[i],
+            backgroundColor: 'transparent',
+            tension: 0.4,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            borderWidth: 2,
+            spanGaps: true,
+        }));
+
+        mkChart('tlSwimChart', {
+            type: 'line',
+            data: { labels, datasets: swimDatasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' } }, grid: { display: false } },
+                    y: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' }, callback: v => `${v}m` }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                }
+            }
+        });
+
+        document.getElementById('tlSwimLegend').innerHTML = wfKeys.map((k, i) =>
+            `<span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text2)"><span style="width:18px;height:2px;background:${wfColors[i]};display:inline-block;flex-shrink:0;"></span>${k}</span>`
+        ).join('');
+
+        // ── Cumulative runtime per repo ────────────────────────────────
+        const repos = [...new Set(tdata.map(r => r.repo))].sort();
+        const repoMins = repos.map(rk => Math.round(tdata.filter(r => r.repo === rk).reduce((a, r) => a + r.dur, 0) / 60));
+        const maxM = Math.max(...repoMins, 1);
+        const cumColors = repos.map((_, i) => PALETTE[i % PALETTE.length]);
+
+        mkChart('tlCumRepoChart', {
+            type: 'bar',
+            data: {
+                labels: repos,
+                datasets: [{ label: 'compute (mins)', data: repoMins, backgroundColor: cumColors, borderRadius: 3, borderSkipped: false }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' }, callback: v => `${v}m` }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                    y: { ticks: { color: '#8b909e', font: { size: 11, family: 'JetBrains Mono' } }, grid: { display: false } }
+                }
+            }
+        });
+
+        // ── Duration histogram ─────────────────────────────────────────
+        const bucketEdges = [0, 30, 60, 120, 300, 600, 900, 1800, 3600, Infinity];
+        const bucketLabels = ['<30s','30-60s','1-2m','2-5m','5-10m','10-15m','15-30m','30-60m','>60m'];
+        const histCounts = Array(bucketLabels.length).fill(0);
+        tdata.forEach(r => {
+            for (let b = 0; b < bucketEdges.length - 1; b++) {
+                if (r.dur >= bucketEdges[b] && r.dur < bucketEdges[b + 1]) { histCounts[b]++; break; }
+            }
+        });
+        const histMax = Math.max(...histCounts, 1);
+        const histColors = histCounts.map(v => {
+            const pct = v / histMax;
+            return pct > 0.7 ? '#f05252' : pct > 0.4 ? '#f0a52b' : '#5b8dee';
+        });
+
+        mkChart('tlHistChart', {
+            type: 'bar',
+            data: {
+                labels: bucketLabels,
+                datasets: [{ label: 'runs', data: histCounts, backgroundColor: histColors, borderRadius: 3, borderSkipped: false }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' } }, grid: { display: false } },
+                    y: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                }
+            }
+        });
+
+        // ── Longest runs table ─────────────────────────────────────────
+        const sorted = [...tdata].sort((a, b) => b.dur - a.dur).slice(0, 20);
+        const avgDurOverall = tdata.length ? tdata.reduce((a, r) => a + r.dur, 0) / tdata.length : 0;
+
+        document.getElementById('tlLongestBody').innerHTML = sorted.map((r, i) => {
+            const vsAvg = avgDurOverall ? (r.dur / avgDurOverall) : 1;
+            const vsColor = vsAvg > 2 ? 'var(--red)' : vsAvg > 1.25 ? 'var(--amber)' : 'var(--green)';
+            const badge = `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10px;background:${r.status==='success'?'rgba(62,207,142,0.12)':r.status==='failed'?'rgba(240,82,82,0.12)':'rgba(240,165,43,0.12)'};color:${r.status==='success'?'var(--green)':r.status==='failed'?'var(--red)':'var(--amber)'}">${r.status}</span>`;
+            return `<tr>
+                <td style="color:var(--text3)">${i+1}</td>
+                <td style="color:var(--text)">${r.wf}</td>
+                <td style="color:var(--text2)">${r.repo}</td>
+                <td><code style="font-size:11px;color:var(--text3)">${r.branch}</code></td>
+                <td>${badge}</td>
+                <td style="color:var(--text3)">${new Date(r.ts).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+                <td style="color:var(--amber);font-weight:500">${fmtDur(r.dur)}</td>
+                <td style="color:${vsColor};font-weight:500">${vsAvg.toFixed(1)}×</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ─── GitHub API Helpers ──────────────────────────────────────────────
+    function githubHeaders() {
+        return {
+            'Authorization': `Bearer ${appState.token}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+        };
+    }
+
+    async function githubFetch(url) {
+        const res = await fetch(url, { headers: githubHeaders() });
+        const rateRemaining = res.headers.get('x-ratelimit-remaining');
+        const rateLimit = res.headers.get('x-ratelimit-limit');
+        if (!res.ok) {
+            let errorMsg = `HTTP ${res.status}`;
+            try {
+                const errJson = await res.json();
+                errorMsg = errJson.message || errorMsg;
+            } catch (e) { /* ignore */ }
+            if (res.status === 401) throw new Error(`Unauthorized: ${errorMsg}. Check your token.`);
+            if (res.status === 403 && rateRemaining === '0') throw new Error(
+                `Rate limit exceeded (${rateLimit}/hour). Wait or use a different token.`);
+            if (res.status === 404) throw new Error(`Not found: ${errorMsg}`);
+            throw new Error(`GitHub API error: ${errorMsg} (${res.status})`);
+        }
+        return { data: await res.json(), rateRemaining, rateLimit };
+    }
+
+    async function githubFetchAllPages(url, maxPages = 3) {
+        let allData = [];
+        let nextUrl = url;
+        for (let page = 0; page < maxPages && nextUrl; page++) {
+            const res = await fetch(nextUrl, { headers: githubHeaders() });
+            if (!res.ok) {
+                if (res.status === 403) {
+                    const remaining = res.headers.get('x-ratelimit-remaining');
+                    if (remaining === '0') throw new Error('Rate limit exceeded.');
+                }
+                break;
+            }
+            const json = await res.json();
+            if (json.workflow_runs) {
+                allData = allData.concat(json.workflow_runs);
+            } else if (Array.isArray(json)) {
+                allData = allData.concat(json);
+            } else {
+                allData.push(json);
+                break;
+            }
+            // Parse Link header for next page
+            const link = res.headers.get('link');
+            nextUrl = null;
+            if (link) {
+                const match = link.match(/<([^>]+)>;\s*rel="next"/);
+                if (match) nextUrl = match[1];
+            }
+            if (json.workflow_runs && json.workflow_runs.length < 100) break;
+            if (Array.isArray(json) && json.length < 100) break;
+        }
+        return allData;
+    }
+
+    function normalizeRun(apiRun, repoFullName) {
+        const created = new Date(apiRun.created_at).getTime();
+        const updated = new Date(apiRun.updated_at).getTime();
+        const started = apiRun.run_started_at ? new Date(apiRun.run_started_at).getTime() : created;
+        const dur = Math.max(1, Math.round((updated - started) / 1000));
+        const queue = Math.max(0, Math.round((started - created) / 1000));
+        const conclusion = apiRun.conclusion || 'unknown';
+        let status = conclusion;
+        if (conclusion === 'failure') status = 'failed';
+        else if (conclusion === 'cancelled') status = 'cancelled';
+        else if (conclusion === 'skipped') status = 'skipped';
+        else if (conclusion === 'success') status = 'success';
+        else if (apiRun.status === 'in_progress' || apiRun.status === 'queued') status = 'skipped';
+
+        return {
+            ts: created,
+            repo: repoFullName,
+            wf: apiRun.name || apiRun.workflow_name || 'unknown',
+            status,
+            dur,
+            queue,
+            cause: null,
+            flaky: false,
+            branch: apiRun.head_branch || 'unknown',
+            id: apiRun.id,
+        };
+    }
+
+    // Compute flaky status: a workflow+branch combo that has both successes and failures
+    function computeFlaky(runs) {
+        const comboMap = {};
+        runs.forEach(r => {
+            const key = `${r.repo}|${r.wf}|${r.branch}`;
+            if (!comboMap[key]) comboMap[key] = { hasSuccess: false, hasFailure: false, indices: [] };
+            if (r.status === 'success') comboMap[key].hasSuccess = true;
+            if (r.status === 'failed') comboMap[key].hasFailure = true;
+        });
+        // Mark failed runs as flaky if their combo has both success and failure
+        const flakyCombos = new Set();
+        Object.entries(comboMap).forEach(([key, val]) => {
+            if (val.hasSuccess && val.hasFailure) flakyCombos.add(key);
+        });
+        runs.forEach(r => {
+            const key = `${r.repo}|${r.wf}|${r.branch}`;
+            if (r.status === 'failed' && flakyCombos.has(key)) r.flaky = true;
+        });
+    }
+
+    // ─── Live Data Fetching ──────────────────────────────────────────────
+    async function fetchRepos() {
+        const st = document.getElementById('connectStatus');
+        let repos = [];
+
+        if (appState.owner && !appState.owner.includes('/')) {
+            // Owner specified (org or user), fetch their repos
+            st.textContent = `Fetching repos for ${appState.owner}…`;
+            st.style.color = 'var(--text3)';
+            try {
+                const { data: orgRepos } = await githubFetch(
+                    `https://api.github.com/orgs/${appState.owner}/repos?per_page=100&sort=updated`);
+                repos = orgRepos;
+            } catch (orgErr) {
+                // Try user repos
+                try {
+                    const { data: userRepos } = await githubFetch(
+                        `https://api.github.com/users/${appState.owner}/repos?per_page=100&sort=updated`);
+                    repos = userRepos;
+                } catch (userErr) {
+                    throw new Error(`Could not find repos for "${appState.owner}". Check the owner name.`);
+                }
+            }
+        } else if (appState.owner && appState.owner.includes('/')) {
+            // Specific repo
+            try {
+                const { data: repo } = await githubFetch(`https://api.github.com/repos/${appState.owner}`);
+                repos = [repo];
+            } catch (err) {
+                throw new Error(`Repository "${appState.owner}" not found. Check the name and token permissions.`);
+            }
+        } else {
+            // No owner specified, fetch authenticated user's repos
+            st.textContent = 'Fetching your repositories…';
+            st.style.color = 'var(--text3)';
+            try {
+                const { data: userRepos } = await githubFetch(
+                'https://api.github.com/user/repos?per_page=100&sort=updated&type=all');
+                repos = userRepos;
+            } catch (err) {
+                // Fallback: try to get repos from the token's user
+                try {
+                    const { data: user } = await githubFetch('https://api.github.com/user');
+                    const { data: userRepos2 } = await githubFetch(
+                        `https://api.github.com/users/${user.login}/repos?per_page=100&sort=updated`);
+                    repos = userRepos2;
+                } catch (err2) {
+                    throw new Error(
+                        'Could not fetch repositories. Ensure your token has the "repo" scope.');
+                }
+            }
+        }
+
+        if (!repos || repos.length === 0) {
+            throw new Error(
+                'No repositories found. Ensure your token has access to repositories with GitHub Actions enabled.'
+                );
+        }
+
+        appState.repoList = repos.map(r => ({
+            full_name: r.full_name,
+            name: r.name,
+            owner: r.owner ? r.owner.login : (appState.owner || 'unknown'),
+            description: r.description || '',
+            private: r.private,
+        }));
+
+        return repos;
+    }
+
+    async function fetchRunsForRepo(fullName, maxPages = 2) {
+        const url =
+            `https://api.github.com/repos/${fullName}/actions/runs?per_page=100&exclude_pull_requests=true`;
+        const apiRuns = await githubFetchAllPages(url, maxPages);
+        return apiRuns.map(r => normalizeRun(r, fullName));
+    }
+
+    async function fetchAllLiveRuns() {
+        if (appState.isFetching) return;
+        appState.isFetching = true;
+        const st = document.getElementById('connectStatus');
+        st.textContent = 'Fetching workflow runs…';
+        st.style.color = 'var(--text3)';
+
+        try {
+            const selectedRepo = document.getElementById('repoFilter').value;
+            let allRuns = [];
+
+            if (selectedRepo === 'all') {
+                // Fetch runs for all repos (limit to 2 pages per repo)
+                const repoFullNames = appState.repoList.map(r => r.full_name);
+                const fetchPromises = repoFullNames.map(fullName =>
+                    fetchRunsForRepo(fullName, 2).catch(err => {
+                        console.warn(`Skipping ${fullName}: ${err.message}`);
+                        return [];
+                    })
+                );
+                const results = await Promise.all(fetchPromises);
+                allRuns = results.flat();
+            } else {
+                allRuns = await fetchRunsForRepo(selectedRepo, 3);
+            }
+
+            computeFlaky(allRuns);
+            appState.liveRuns = allRuns;
+            appState.isLive = true;
+            appState.lastFetchTime = Date.now();
+            buildRepoDefsDynamic();
+            populateRepoDropdown();
+
+            const totalRuns = allRuns.length;
+            st.textContent = `✓ Loaded ${totalRuns.toLocaleString()} runs from ${appState.repoList.length} repo(s)`;
+            st.style.color = 'var(--green)';
+        } catch (err) {
+            st.textContent = `Error: ${err.message}`;
+            st.style.color = 'var(--red)';
+            throw err;
+        } finally {
+            appState.isFetching = false;
+        }
+    }
+
+    // ─── Connection Handler ──────────────────────────────────────────────
+    async function handleConnect() {
+        const token = document.getElementById('tokenInput').value.trim();
+        const org = document.getElementById('orgInput').value.trim();
+        const st = document.getElementById('connectStatus');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+
+        if (!token) {
+            st.textContent = 'Please enter a GitHub PAT token.';
+            st.style.color = 'var(--amber)';
+            return;
+        }
+
+        // Validate token format
+        if (!token.startsWith('ghp_') && !token.startsWith('github_pat_') && !token.startsWith('gho_') && !token
+            .startsWith('ghu_') && !token.startsWith('ghs_') && !token.startsWith('ghr_')) {
+            st.textContent =
+                'Warning: Token format looks unusual. Proceeding anyway…';
+            st.style.color = 'var(--amber)';
+        } else {
+            st.textContent = 'Connecting…';
+            st.style.color = 'var(--text3)';
+        }
+
+        connectBtn.disabled = true;
+        connectBtn.textContent = '⏳ Connecting…';
+
+        appState.token = token;
+        appState.owner = org;
+
+        try {
+            // Validate token by fetching repos
+            await fetchRepos();
+
+            // Fetch runs
+            await fetchAllLiveRuns();
+
+            // Success — enable the UI
+            enableLiveMode();
+            refreshCurrentTab();
+
+            st.textContent =
+                `✓ Connected · ${appState.repoList.length} repo(s) · ${appState.liveRuns.length.toLocaleString()} runs`;
+            st.style.color = 'var(--green)';
+            connectBtn.textContent = '↗ Connected ✓';
+            connectBtn.style.background = 'rgba(62,207,142,0.08)';
+            disconnectBtn.classList.add('visible');
+        } catch (err) {
+            st.textContent = `✕ ${err.message}`;
+            st.style.color = 'var(--red)';
+            connectBtn.disabled = false;
+            connectBtn.textContent = '↗ Retry Connection';
+            connectBtn.style.background = 'rgba(240,82,82,0.12)';
+            appState.isLive = false;
+            console.error('Connection error:', err);
+        }
+    }
+
+    function enableLiveMode() {
+        appState.isLive = true;
+
+        // Hide overlay
+        document.getElementById('mainOverlay').classList.add('hidden');
+
+        // Enable content
+        document.getElementById('contentArea').classList.remove('disabled');
+
+        // Enable controls
+        document.getElementById('repoFilter').disabled = false;
+        document.getElementById('timeFilter').disabled = false;
+        document.getElementById('refreshBtn').disabled = false;
+
+        // Update badge
+        const badge = document.getElementById('liveBadge');
+        badge.classList.remove('demo-mode');
+        badge.innerHTML = '<div class="live-dot"></div>LIVE';
+
+        // Update topbar
+        document.getElementById('topbar-title').textContent = `${tabTitles[activeTab]} · live`;
+
+        // Update logo subtitle
+        document.getElementById('logoSub').textContent = 'live mode';
+
+        // Disable token input
+        document.getElementById('tokenInput').disabled = true;
+        document.getElementById('orgInput').disabled = true;
+
+        // Show disconnect button
+        document.getElementById('disconnectBtn').classList.add('visible');
+
+        // Enable nav items
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('disabled'));
+    }
+
+    function handleDisconnect() {
+        appState.isLive = false;
+        appState.token = '';
+        appState.owner = '';
+        appState.liveRuns = [];
+        appState.repoList = [];
+        appState.repoDefsDynamic = {};
+        appState.lastFetchTime = null;
+
+        // Show overlay
+        document.getElementById('mainOverlay').classList.remove('hidden');
+
+        // Disable content
+        document.getElementById('contentArea').classList.add('disabled');
+
+        // Disable controls
+        document.getElementById('repoFilter').disabled = true;
+        document.getElementById('timeFilter').disabled = true;
+        document.getElementById('refreshBtn').disabled = true;
+
+        // Reset repo filter
+        document.getElementById('repoFilter').innerHTML = '<option value="all">All repos</option>';
+
+        // Update badge
+        const badge = document.getElementById('liveBadge');
+        badge.classList.add('demo-mode');
+        badge.innerHTML = '<div class="live-dot"></div>demo';
+
+        // Update topbar
+        document.getElementById('topbar-title').textContent = 'overview · demo data';
+
+        // Update logo subtitle
+        document.getElementById('logoSub').textContent = 'dashboard v1.0';
+
+        // Enable token inputs
+        document.getElementById('tokenInput').disabled = false;
+        document.getElementById('orgInput').disabled = false;
+
+        // Reset connect button
+        const connectBtn = document.getElementById('connectBtn');
+        connectBtn.disabled = false;
+        connectBtn.textContent = '↗ Connect Live Data';
+        connectBtn.style.background = 'rgba(62,207,142,0.15)';
+
+        // Hide disconnect button
+        document.getElementById('disconnectBtn').classList.remove('visible');
+
+        // Clear status
+        document.getElementById('connectStatus').textContent = '';
+
+        // Reset to demo data
+        ALL_RUNS = genRuns();
+        expandedRepos = {};
+        Object.keys(_charts).forEach(k => { if (_charts[k]) _charts[k].destroy();
+            delete _charts[k]; });
+
+        // Reset nav counts
+        document.getElementById('nav-fail-count').textContent = '—';
+        document.getElementById('nav-repo-count').textContent = '—';
+        document.getElementById('sidebar-repo-list').innerHTML = '';
+
+        // Switch to overview
+        switchTab('overview', document.getElementById('nav-overview'));
+        refreshCurrentTab();
+    }
+
+    // ─── Init ────────────────────────────────────────────────────────────
+    function init() {
+        // Start in disabled/demo state
+        document.getElementById('contentArea').classList.add('disabled');
+        document.getElementById('repoFilter').disabled = true;
+        document.getElementById('timeFilter').disabled = true;
+        document.getElementById('refreshBtn').disabled = true;
+        document.getElementById('mainOverlay').classList.remove('hidden');
+        document.getElementById('liveBadge').classList.add('demo-mode');
+        document.getElementById('topbar-title').textContent = 'overview · demo data';
+        document.getElementById('logoSub').textContent = 'dashboard v1.0';
+        document.getElementById('disconnectBtn').classList.remove('visible');
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('connectBtn').textContent = '↗ Connect Live Data';
+        document.getElementById('connectBtn').style.background = 'rgba(62,207,142,0.15)';
+        document.getElementById('tokenInput').disabled = false;
+        document.getElementById('orgInput').disabled = false;
+        document.getElementById('connectStatus').textContent = '';
+        document.getElementById('nav-fail-count').textContent = '—';
+        document.getElementById('nav-repo-count').textContent = '—';
+        document.getElementById('sidebar-repo-list').innerHTML = '';
+
+        // Generate fresh demo data and render
+        ALL_RUNS = genRuns();
+        expandedRepos = {};
+        refreshCurrentTab();
+    }
+
+    // Run init
+    init();
+</script>
+</body>
+</html>
