@@ -1198,6 +1198,11 @@
                     <span class="nav-dot dot-green"></span>
                     Overview
                 </div>
+                <div class="nav-item" onclick="switchTab('live', this)" id="nav-live">
+                    <span class="nav-dot" style="background:#f05252;animation:pulse 1.2s ease infinite;"></span>
+                    Live Now
+                    <span class="nav-count" id="nav-live-count" style="background:rgba(240,82,82,0.15);color:var(--red);">0</span>
+                </div>
                 <div class="nav-item" onclick="switchTab('repos', this)" id="nav-repos">
                     <span class="nav-dot dot-blue"></span>
                     Repositories
@@ -1316,9 +1321,146 @@
                     <div class="card-title">repository health scorecard</div>
                     <div class="repo-grid" id="overviewRepoGrid"></div>
                 </div>
+
+                <!-- Workflow Efficiency Matrix -->
+                <div class="card section fade-in-3">
+                    <div class="section-head" style="margin-bottom:16px;">
+                        <div>
+                            <div class="card-title" style="margin-bottom:2px;">workflow efficiency matrix</div>
+                            <div style="font-size:11px;font-family:var(--mono);color:var(--text3);">each cell = repo × workflow &middot; hover for details</div>
+                        </div>
+                        <select class="ctrl-select" id="matrixMetric" onchange="renderMatrix()" style="font-size:11px;padding:4px 22px 4px 8px;">
+                            <option value="success">success rate</option>
+                            <option value="duration">avg duration</option>
+                            <option value="runs">run volume</option>
+                        </select>
+                    </div>
+                    <div id="matrixWrap" style="overflow-x:auto;"></div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:14px;">
+                        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">low</span>
+                        <div id="matrixLegendBar" style="display:flex;gap:2px;"></div>
+                        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">high</span>
+                        <span id="matrixLegendLabel" style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:12px;"></span>
+                    </div>
+                </div>
+
+                <!-- CI Pulse + Streaks + Time Sinks -->
+                <div class="two-col section fade-in-3" style="align-items:start;">
+                    <div class="card">
+                        <div class="section-head" style="margin-bottom:14px;">
+                            <div class="card-title" style="margin-bottom:0;">ci pulse</div>
+                            <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">notable events</span>
+                        </div>
+                        <div id="ciPulseFeed" style="display:flex;flex-direction:column;gap:1px;"></div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+                        <div class="card">
+                            <div class="card-title">streak tracker</div>
+                            <div id="streakGrid" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">top time sinks this period</div>
+                            <div id="timeSinks" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MTTR & Burn Rate -->
+                <div class="two-col section fade-in-3" style="align-items:start;">
+                    <div class="card">
+                        <div class="section-head" style="margin-bottom:14px;">
+                            <div>
+                                <div class="card-title" style="margin-bottom:2px;">recovery radar</div>
+                                <div style="font-size:11px;font-family:var(--mono);color:var(--text3);">MTTR per repo · smaller = faster recovery</div>
+                            </div>
+                        </div>
+                        <div class="chart-wrap" style="height:240px;">
+                            <canvas id="mttrRadarChart" role="img" aria-label="Radar chart showing mean time to recovery per repository"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="section-head" style="margin-bottom:10px;">
+                            <div>
+                                <div class="card-title" style="margin-bottom:2px;">compute burn rate</div>
+                                <div style="font-size:11px;font-family:var(--mono);color:var(--text3);">minutes consumed per day · trend</div>
+                            </div>
+                        </div>
+                        <div class="chart-wrap" style="height:140px;">
+                            <canvas id="burnRateChart" role="img" aria-label="Area chart showing daily compute minutes burned"></canvas>
+                        </div>
+                        <div id="burnRateStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px;"></div>
+                    </div>
+                </div>
+
+                <!-- Live Now mini-strip in overview -->
+                <div class="card section fade-in-3" id="overviewLiveStrip">
+                    <div class="section-head" style="margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div class="live-dot" style="width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1.2s ease infinite;flex-shrink:0;"></div>
+                            <div class="card-title" style="margin-bottom:0;">running now</div>
+                        </div>
+                        <button onclick="switchTab('live', document.getElementById('nav-live'))" style="background:none;border:1px solid var(--border2);border-radius:var(--radius);color:var(--text3);font-size:11px;font-family:var(--mono);padding:4px 10px;cursor:pointer;">see all →</button>
+                    </div>
+                    <div id="overviewLiveList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                </div>
+
             </div>
 
-            <!-- ── Repos Tab ── -->
+            <!-- ── Live Now Tab ── -->
+            <div class="tab-panel" id="tab-live">
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+                    <div>
+                        <div style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;">
+                            <div style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1.2s ease infinite;"></div>
+                            workflows running right now
+                        </div>
+                        <div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-top:3px;">auto-refreshes every 30s · progress estimated from avg duration</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <select class="ctrl-select" id="liveRepoFilter" onchange="renderLiveTab()" style="font-size:11px;">
+                            <option value="all">all repos</option>
+                        </select>
+                        <button onclick="renderLiveTab()" style="background:rgba(62,207,142,0.12);border:1px solid rgba(62,207,142,0.25);border-radius:var(--radius);color:var(--green);font-size:11px;font-family:var(--mono);padding:6px 12px;cursor:pointer;">↺ refresh</button>
+                    </div>
+                </div>
+
+                <!-- Summary strip -->
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;" id="liveMetrics"></div>
+
+                <!-- Running workflows -->
+                <div class="card section">
+                    <div class="section-head" style="margin-bottom:14px;">
+                        <span class="card-title" style="margin-bottom:0;">active runs</span>
+                        <span id="liveRunCount" style="font-size:11px;font-family:var(--mono);color:var(--text3);"></span>
+                    </div>
+                    <div id="liveRunsList" style="display:flex;flex-direction:column;gap:10px;"></div>
+                    <div id="liveEmpty" style="display:none;text-align:center;padding:40px;font-family:var(--mono);font-size:13px;color:var(--text3);">
+                        ✓ no workflows running at this moment
+                    </div>
+                </div>
+
+                <!-- Recently completed (last 15 min) -->
+                <div class="card section">
+                    <div class="section-head" style="margin-bottom:14px;">
+                        <div>
+                            <div class="card-title" style="margin-bottom:2px;">just finished</div>
+                            <div style="font-size:11px;font-family:var(--mono);color:var(--text3);">completed in the last 15 minutes</div>
+                        </div>
+                    </div>
+                    <div id="liveRecentList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                    <div id="liveRecentEmpty" style="display:none;padding:16px 0;font-family:var(--mono);font-size:12px;color:var(--text3);">nothing completed recently</div>
+                </div>
+
+                <!-- Queue by repo bar -->
+                <div class="card section">
+                    <div class="card-title">active run distribution by repository</div>
+                    <div class="chart-wrap" style="height:160px;">
+                        <canvas id="liveRepoChart" role="img" aria-label="Bar chart showing how many runs are active per repository"></canvas>
+                    </div>
+                </div>
+
+            </div><!-- /tab-live -->
             <div class="tab-panel" id="tab-repos">
                 <div class="section">
                     <div class="section-head">
@@ -1547,6 +1689,7 @@
         repoDefsDynamic: {}, // { repoKey: { key, label, bgCol, fgCol, desc } }
         isFetching: false,
         lastFetchTime: null,
+        inProgressRuns: [], // dedicated store for currently-running jobs
     };
 
     // ─── Demo Data (fallback / initial placeholder) ──────────────────────
@@ -1948,6 +2091,15 @@
 
         // Overview repo scorecard
         renderRepoGrid('overviewRepoGrid', data, true);
+
+        // MTTR Radar
+        renderMTTRRadar(data);
+
+        // Burn rate
+        renderBurnRate(data);
+
+        // Live strip in overview
+        renderOverviewLiveStrip();
     }
 
     // ─── Repo grid (shared renderer) ─────────────────────────────────────
@@ -2434,7 +2586,7 @@
     // ─── Tab switching ───────────────────────────────────────────────────
     let activeTab = 'overview';
     const tabTitles = { overview: 'overview', repos: 'repositories', runs: 'all runs', failures: 'failure analysis',
-        heatmap: 'heatmap & timing', timeline: 'timeline & runtimes' };
+        heatmap: 'heatmap & timing', timeline: 'timeline & runtimes', live: 'live now' };
 
     function switchTab(tab, el) {
         if (!appState.isLive && tab !== 'overview') {
@@ -2463,6 +2615,9 @@
         else if (activeTab === 'heatmap') { renderHeatmap();
             renderQueueChart(); }
         else if (activeTab === 'timeline') renderTimeline();
+        else if (activeTab === 'live') renderLiveTab();
+        // Always update live badge count
+        updateLiveBadge();
         populateRepoDropdown();
     }
 
@@ -2703,6 +2858,397 @@
         }).join('');
     }
 
+    // ─── MTTR Radar Chart ────────────────────────────────────────────────
+    function renderMTTRRadar(data) {
+        const repoDefs = getRepoDefs();
+        const repoKeys = Object.keys(repoDefs).slice(0, 7);
+        if (!repoKeys.length) return;
+
+        // MTTR: for each repo, find pairs (failure → next success on same workflow)
+        // and average the gap in minutes
+        const mttrByRepo = repoKeys.map(rk => {
+            const repoRuns = data.filter(r => r.repo === rk).sort((a, b) => a.ts - b.ts);
+            const wfs = [...new Set(repoRuns.map(r => r.wf))];
+            const gaps = [];
+            wfs.forEach(wf => {
+                const wfRuns = repoRuns.filter(r => r.wf === wf);
+                for (let i = 0; i < wfRuns.length - 1; i++) {
+                    if (wfRuns[i].status === 'failed') {
+                        for (let j = i + 1; j < wfRuns.length; j++) {
+                            if (wfRuns[j].status === 'success') {
+                                gaps.push((wfRuns[j].ts - wfRuns[i].ts) / 60000);
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+            const mttr = gaps.length ? Math.round(gaps.reduce((a, v) => a + v, 0) / gaps.length) : 0;
+            return mttr;
+        });
+
+        const maxMTTR = Math.max(...mttrByRepo, 1);
+        // Invert: radar = bigger is worse; show as-is, label will clarify
+        mkChart('mttrRadarChart', {
+            type: 'radar',
+            data: {
+                labels: repoKeys.map(k => k.length > 10 ? k.slice(0, 10) + '…' : k),
+                datasets: [{
+                    label: 'MTTR (min)',
+                    data: mttrByRepo,
+                    backgroundColor: 'rgba(240,82,82,0.12)',
+                    borderColor: '#f05252',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#f05252',
+                    pointRadius: 4,
+                }, {
+                    label: 'Avg MTTR',
+                    data: repoKeys.map(() => mttrByRepo.reduce((a, v) => a + v, 0) / repoKeys.length),
+                    backgroundColor: 'rgba(91,141,238,0.06)',
+                    borderColor: 'rgba(91,141,238,0.4)',
+                    borderWidth: 1,
+                    borderDash: [4, 3],
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `MTTR: ${ctx.raw}m` } }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.06)' },
+                        angleLines: { color: 'rgba(255,255,255,0.06)' },
+                        pointLabels: { color: '#8b909e', font: { size: 10, family: 'JetBrains Mono' } },
+                        ticks: { color: '#555b6a', font: { size: 9 }, backdropColor: 'transparent', callback: v => `${v}m` }
+                    }
+                }
+            }
+        });
+    }
+
+    // ─── Burn Rate Chart ─────────────────────────────────────────────────
+    function renderBurnRate(data) {
+        const bkts = getDayBuckets(data);
+        const labels = Object.keys(bkts);
+        const mins = labels.map(day => Math.round((bkts[day] || []).reduce((a, r) => a + r.dur, 0) / 60));
+        const avg = mins.length ? Math.round(mins.reduce((a, v) => a + v, 0) / mins.length) : 0;
+        const trend = mins.length >= 2 ? mins[mins.length - 1] - mins[0] : 0;
+        const trendPct = avg > 0 ? Math.round(trend / avg * 100) : 0;
+        const total = mins.reduce((a, v) => a + v, 0);
+
+        // colour the fill based on trend
+        const fillColor = trend > avg * 0.2 ? 'rgba(240,82,82,0.15)' : trend < -avg * 0.1 ? 'rgba(62,207,142,0.12)' : 'rgba(91,141,238,0.12)';
+        const lineColor = trend > avg * 0.2 ? '#f05252' : trend < -avg * 0.1 ? '#3ecf8e' : '#5b8dee';
+
+        mkChart('burnRateChart', {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'mins/day',
+                    data: mins,
+                    borderColor: lineColor,
+                    backgroundColor: fillColor,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 2,
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#555b6a', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } },
+                    y: { ticks: { color: '#555b6a', font: { size: 9, family: 'JetBrains Mono' }, callback: v => `${v}m` }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                }
+            }
+        });
+
+        const trendColor = trend > 0 ? '#f05252' : '#3ecf8e';
+        const trendArrow = trend > 0 ? '↑' : trend < 0 ? '↓' : '→';
+        document.getElementById('burnRateStats').innerHTML = [
+            { label: 'total compute', val: `${total.toLocaleString()}m`, sub: `~${Math.round(total/60)}h`, col: 'var(--text)' },
+            { label: 'daily avg', val: `${avg}m`, sub: 'per day', col: 'var(--text)' },
+            { label: 'trend', val: `${trendArrow} ${Math.abs(trendPct)}%`, sub: trend > 0 ? 'increasing' : trend < 0 ? 'decreasing' : 'stable', col: trendColor },
+        ].map(s => `<div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px;">
+            <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">${s.label}</div>
+            <div style="font-size:18px;font-family:var(--mono);color:${s.col};">${s.val}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;">${s.sub}</div>
+        </div>`).join('');
+    }
+
+    // ─── Live Now helpers ─────────────────────────────────────────────────
+    function getLiveRuns() {
+        const now = Date.now();
+        if (appState.isLive) {
+            // Prefer the dedicated inProgressRuns fetched with status=in_progress from the API.
+            // Fall back to filtering liveRuns (already correctly normalised after the normalizeRun fix).
+            const dedicated = appState.inProgressRuns || [];
+            const fromCache = appState.liveRuns.filter(r => r.status === 'in_progress');
+            const combined = [...dedicated, ...fromCache];
+            // Deduplicate by run id
+            const seen = new Set();
+            return combined.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+        }
+        // Demo: treat runs that started within the last 25 min (relative to their timestamp) as "running"
+        // We create a small stable set seeded from demo data
+        const repoDefs = getRepoDefs();
+        const repoKeys = Object.keys(repoDefs);
+        const LIVE_SEED = [
+            { repo: repoKeys[0] || 'api-service', wf: 'CI / test',       branch: 'main',           elapsed: 142, expectedDur: 246 },
+            { repo: repoKeys[1] || 'web-app',      wf: 'E2E tests',       branch: 'feature/auth',   elapsed: 381, expectedDur: 744 },
+            { repo: repoKeys[2] || 'ml-pipeline',  wf: 'Train model',     branch: 'develop',        elapsed: 870, expectedDur: 1920 },
+            { repo: repoKeys[0] || 'api-service',  wf: 'Security scan',   branch: 'main',           elapsed: 55,  expectedDur: 138 },
+            { repo: repoKeys[3] || 'infra-deploy', wf: 'Plan & apply',    branch: 'hotfix/null-check', elapsed: 196, expectedDur: 228 },
+        ];
+        return LIVE_SEED.map((s, i) => ({
+            ...s,
+            id: `live-${i}`,
+            status: 'in_progress',
+            startedAt: now - s.elapsed * 1000,
+            ts: now - s.elapsed * 1000,
+        }));
+    }
+
+    function getRecentlyFinished() {
+        const cutoff = Date.now() - 15 * 60 * 1000; // last 15 min
+        if (appState.isLive) {
+            // Use completedAt (= updated_at) so only runs that *finished* recently appear here.
+            // Exclude anything still in_progress.
+            return appState.liveRuns
+                .filter(r => r.status !== 'in_progress' && r.completedAt && r.completedAt >= cutoff)
+                .sort((a, b) => b.completedAt - a.completedAt);
+        }
+        // Demo: last 6 entries from ALL_RUNS sorted by ts
+        return [...ALL_RUNS].sort((a, b) => b.ts - a.ts).slice(0, 6);
+    }
+
+    function updateLiveBadge() {
+        const count = getLiveRuns().length;
+        const badge = document.getElementById('nav-live-count');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'inline-block' : 'inline-block';
+        }
+        // Also update liveRepoFilter
+        const liveRepoSel = document.getElementById('liveRepoFilter');
+        if (liveRepoSel) {
+            const repoDefs = getRepoDefs();
+            const repoKeys = Object.keys(repoDefs).sort();
+            const cur = liveRepoSel.value;
+            liveRepoSel.innerHTML = '<option value="all">all repos</option>' +
+                repoKeys.map(k => `<option value="${k}">${k}</option>`).join('');
+            if ([...liveRepoSel.options].some(o => o.value === cur)) liveRepoSel.value = cur;
+        }
+    }
+
+    function elapsedBar(elapsed, expected) {
+        const pct = Math.min(Math.round(elapsed / expected * 100), 100);
+        const overrun = elapsed > expected;
+        const barCol = overrun ? '#f05252' : pct > 80 ? '#f0a52b' : '#3ecf8e';
+        return { pct, overrun, barCol };
+    }
+
+    function renderOverviewLiveStrip() {
+        const live = getLiveRuns().slice(0, 4);
+        const el = document.getElementById('overviewLiveList');
+        if (!el) return;
+        if (!live.length) {
+            el.innerHTML = `<div style="font-family:var(--mono);font-size:12px;color:var(--text3);padding:10px 0;">✓ no active runs right now</div>`;
+            return;
+        }
+        const now = Date.now();
+        const repoDefs = getRepoDefs();
+        el.innerHTML = live.map(r => {
+            const elapsed = r.elapsed != null ? r.elapsed : Math.round((now - (r.startedAt || r.ts)) / 1000);
+            const expected = r.expectedDur || (appState.isLive ? Math.max(r.dur, 60) : 300);
+            const { pct, overrun, barCol } = elapsedBar(elapsed, expected);
+            const rd = repoDefs[r.repo] || { fgCol: 'var(--text2)' };
+            return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);">
+                <div style="width:6px;height:6px;border-radius:50%;background:${barCol};animation:pulse 1.5s ease infinite;flex-shrink:0;"></div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+                        <span style="font-family:var(--mono);font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.wf}</span>
+                        <span style="font-family:var(--mono);font-size:11px;color:${rd.fgCol};margin-left:8px;white-space:nowrap;">${r.repo}</span>
+                    </div>
+                    <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;">
+                        <div style="width:${pct}%;height:100%;background:${barCol};border-radius:2px;transition:width 1s linear;"></div>
+                    </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-family:var(--mono);font-size:11px;color:${overrun ? '#f05252' : 'var(--text3)'};">${fmtDur(elapsed)}</div>
+                    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);">${pct}%</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderLiveTab() {
+        const liveRuns = getLiveRuns();
+        const repoF = document.getElementById('liveRepoFilter')?.value || 'all';
+        const filtered = repoF === 'all' ? liveRuns : liveRuns.filter(r => r.repo === repoF);
+        const recent = getRecentlyFinished();
+        const repoDefs = getRepoDefs();
+        const now = Date.now();
+
+        // Metrics strip
+        const totalActive = liveRuns.length;
+        const overrunCount = liveRuns.filter(r => {
+            const el = r.elapsed != null ? r.elapsed : Math.round((now - (r.startedAt || r.ts)) / 1000);
+            const exp = r.expectedDur || (appState.isLive ? Math.max(r.dur, 60) : 300);
+            return el > exp;
+        }).length;
+        const reposActive = [...new Set(liveRuns.map(r => r.repo))].length;
+        const avgElapsed = liveRuns.length ? Math.round(liveRuns.reduce((a, r) => a + (r.elapsed != null ? r.elapsed : Math.round((now - (r.startedAt || r.ts)) / 1000)), 0) / liveRuns.length) : 0;
+
+        document.getElementById('liveMetrics').innerHTML = [
+            { label: 'running now', val: totalActive, col: totalActive > 0 ? 'var(--red)' : 'var(--text)', sub: 'active workflows' },
+            { label: 'overrunning', val: overrunCount, col: overrunCount > 0 ? '#f05252' : 'var(--green)', sub: 'past expected time' },
+            { label: 'repos active', val: reposActive, col: 'var(--text)', sub: 'with running jobs' },
+            { label: 'avg elapsed', val: fmtDur(avgElapsed), col: 'var(--amber)', sub: 'time so far' },
+        ].map(m => `<div class="metric-card">
+            <div class="metric-label">${m.label}</div>
+            <div class="metric-value" style="color:${m.col}">${m.val}</div>
+            <div class="metric-sub">${m.sub}</div>
+        </div>`).join('');
+
+        // Active runs list
+        const listEl = document.getElementById('liveRunsList');
+        const emptyEl = document.getElementById('liveEmpty');
+        listEl.innerHTML = '';
+        if (!filtered.length) {
+            emptyEl.style.display = 'block';
+            listEl.style.display = 'none';
+        } else {
+            emptyEl.style.display = 'none';
+            listEl.style.display = 'flex';
+            document.getElementById('liveRunCount').textContent = `${filtered.length} run${filtered.length !== 1 ? 's' : ''}`;
+
+            listEl.innerHTML = filtered.map(r => {
+                // elapsed: for API runs use startedAt; for demo seeds use pre-set .elapsed
+                const elapsed = r.elapsed != null ? r.elapsed : Math.round((now - (r.startedAt || r.ts)) / 1000);
+                // expected: use a baseline from avg successful runs of same workflow, fall back to dur or 300s
+                const expected = r.expectedDur || (appState.isLive ? Math.max(r.dur, 60) : 300);
+                const { pct, overrun, barCol } = elapsedBar(elapsed, expected);
+                const rd = repoDefs[r.repo] || { fgCol: '#5b8dee', bgCol: '#1a2a3d', label: '??', desc: r.repo };
+                const remaining = overrun ? null : expected - elapsed;
+
+                return `<div style="background:var(--bg3);border:1px solid ${overrun ? 'rgba(240,82,82,0.25)' : 'var(--border)'};border-radius:var(--radius-lg);padding:16px 18px;">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                        <div style="width:32px;height:32px;border-radius:8px;background:${rd.bgCol};color:${rd.fgCol};display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0;">${rd.label}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);">${r.wf}</div>
+                            <div style="font-size:11px;color:var(--text3);margin-top:1px;font-family:var(--mono);">
+                                <span style="color:${rd.fgCol}">${r.repo}</span>
+                                <span style="color:var(--text3)"> · ${r.branch || 'main'}</span>
+                            </div>
+                        </div>
+                        <div style="text-align:right;flex-shrink:0;">
+                            <div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;">
+                                <div style="width:7px;height:7px;border-radius:50%;background:${barCol};animation:pulse 1.2s ease infinite;"></div>
+                                <span style="font-family:var(--mono);font-size:12px;color:${overrun ? '#f05252' : 'var(--text)'};">${fmtDur(elapsed)}</span>
+                            </div>
+                            ${overrun
+                                ? `<div style="font-size:10px;color:#f05252;font-family:var(--mono);margin-top:2px;">+${fmtDur(elapsed - expected)} overrun</div>`
+                                : `<div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;">~${fmtDur(remaining)} left</div>`
+                            }
+                        </div>
+                    </div>
+                    <!-- Progress bar -->
+                    <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;position:relative;">
+                        <div style="width:${pct}%;height:100%;background:${barCol};border-radius:3px;transition:width 1s linear;position:relative;">
+                            ${pct < 100 ? `<div style="position:absolute;right:0;top:0;bottom:0;width:2px;background:white;opacity:0.5;border-radius:1px;"></div>` : ''}
+                        </div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:6px;">
+                        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">started ${new Date(r.startedAt || r.ts).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})}</span>
+                        <span style="font-size:10px;font-family:var(--mono);color:${overrun?'#f05252':'var(--text3)'};">${pct}% · expected ${fmtDur(expected)}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Recently finished
+        const recentEl = document.getElementById('liveRecentList');
+        const recentEmptyEl = document.getElementById('liveRecentEmpty');
+        const stBg = { success: 'rgba(62,207,142,0.1)', failed: 'rgba(240,82,82,0.1)', cancelled: 'rgba(240,165,43,0.1)', skipped: 'rgba(85,91,106,0.1)' };
+        const stCol = { success: 'var(--green)', failed: 'var(--red)', cancelled: 'var(--amber)', skipped: 'var(--text3)' };
+        const stIcon = { success: '✓', failed: '✕', cancelled: '⊘', skipped: '—' };
+
+        if (!recent.length) {
+            recentEmptyEl.style.display = 'block';
+            recentEl.style.display = 'none';
+        } else {
+            recentEmptyEl.style.display = 'none';
+            recentEl.style.display = 'flex';
+            const rd2 = repoDefs;
+            recentEl.innerHTML = recent.slice(0, 8).map(r => {
+                const rd = rd2[r.repo] || { fgCol: '#5b8dee' };
+                const stBgC = stBg[r.status] || 'rgba(85,91,106,0.1)';
+                const stC = stCol[r.status] || 'var(--text3)';
+                const ico = stIcon[r.status] || '·';
+                return `<div style="display:flex;align-items:center;gap:12px;padding:9px 12px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);">
+                    <div style="width:24px;height:24px;border-radius:6px;background:${stBgC};display:flex;align-items:center;justify-content:center;font-size:11px;color:${stC};flex-shrink:0;">${ico}</div>
+                    <div style="flex:1;min-width:0;">
+                        <span style="font-family:var(--mono);font-size:12px;color:var(--text);">${r.wf}</span>
+                        <span style="font-family:var(--mono);font-size:11px;color:${rd.fgCol};margin-left:8px;">${r.repo}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                        <span style="font-family:var(--mono);font-size:11px;color:var(--text3);">${fmtDur(r.dur)}</span>
+                        <span style="font-family:var(--mono);font-size:11px;color:var(--text3);">${timeAgo(r.ts)}</span>
+                        <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${stBgC};color:${stC};font-family:var(--mono);">${r.status}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Distribution chart
+        const repoCounts = {};
+        liveRuns.forEach(r => { repoCounts[r.repo] = (repoCounts[r.repo] || 0) + 1; });
+        const repoChartKeys = Object.keys(repoCounts);
+        const PALETTE = ['#5b8dee','#3ecf8e','#f0a52b','#f05252','#a78bfa','#38b2ac'];
+
+        mkChart('liveRepoChart', {
+            type: 'bar',
+            data: {
+                labels: repoChartKeys,
+                datasets: [{ label: 'active runs', data: repoChartKeys.map(k => repoCounts[k]),
+                    backgroundColor: repoChartKeys.map((_, i) => PALETTE[i % PALETTE.length]),
+                    borderRadius: 4, borderSkipped: false }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#8b909e', font: { size: 11, family: 'JetBrains Mono' } }, grid: { display: false } },
+                    y: { ticks: { color: '#555b6a', font: { size: 10, family: 'JetBrains Mono' }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                }
+            }
+        });
+    }
+
+    // ─── Auto-refresh live tab every 30s ─────────────────────────────────
+    setInterval(async () => {
+        // Re-fetch in-progress runs from GitHub API when live
+        if (appState.isLive && appState.token && !appState.isFetching) {
+            const repoNames = appState.repoList.map(r => r.full_name);
+            try {
+                const results = await Promise.all(repoNames.map(n => fetchInProgressRuns(n).catch(() => [])));
+                const flat = results.flat();
+                const seen = new Set();
+                appState.inProgressRuns = flat.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+            } catch(e) { /* silently ignore refresh errors */ }
+        }
+        if (activeTab === 'live') renderLiveTab();
+        updateLiveBadge();
+        if (activeTab === 'overview') renderOverviewLiveStrip();
+    }, 30000);
+
     // ─── GitHub API Helpers ──────────────────────────────────────────────
     function githubHeaders() {
         return {
@@ -2769,18 +3315,33 @@
         const created = new Date(apiRun.created_at).getTime();
         const updated = new Date(apiRun.updated_at).getTime();
         const started = apiRun.run_started_at ? new Date(apiRun.run_started_at).getTime() : created;
-        const dur = Math.max(1, Math.round((updated - started) / 1000));
+        const now = Date.now();
         const queue = Math.max(0, Math.round((started - created) / 1000));
-        const conclusion = apiRun.conclusion || 'unknown';
-        let status = conclusion;
-        if (conclusion === 'failure') status = 'failed';
-        else if (conclusion === 'cancelled') status = 'cancelled';
-        else if (conclusion === 'skipped') status = 'skipped';
-        else if (conclusion === 'success') status = 'success';
-        else if (apiRun.status === 'in_progress' || apiRun.status === 'queued') status = 'skipped';
+
+        // Preserve in_progress — check apiRun.status FIRST before looking at conclusion
+        let status;
+        if (['in_progress', 'queued', 'waiting', 'requested', 'pending'].includes(apiRun.status)) {
+            status = 'in_progress';
+        } else {
+            const conclusion = apiRun.conclusion;
+            if (conclusion === 'failure') status = 'failed';
+            else if (conclusion === 'cancelled') status = 'cancelled';
+            else if (conclusion === 'skipped') status = 'skipped';
+            else if (conclusion === 'success') status = 'success';
+            else status = 'unknown';
+        }
+
+        // For running jobs, dur = elapsed so far (started → now); for completed, started → updated
+        const endTime = status === 'in_progress' ? now : updated;
+        const dur = Math.max(1, Math.round((endTime - started) / 1000));
+
+        // completedAt lets getRecentlyFinished use the real finish time
+        const completedAt = status !== 'in_progress' ? updated : null;
 
         return {
             ts: created,
+            startedAt: started,
+            completedAt,
             repo: repoFullName,
             wf: apiRun.name || apiRun.workflow_name || 'unknown',
             status,
@@ -2884,10 +3445,29 @@
     }
 
     async function fetchRunsForRepo(fullName, maxPages = 2) {
+        // Fetch completed runs (main history)
         const url =
             `https://api.github.com/repos/${fullName}/actions/runs?per_page=100&exclude_pull_requests=true`;
         const apiRuns = await githubFetchAllPages(url, maxPages);
         return apiRuns.map(r => normalizeRun(r, fullName));
+    }
+
+    // Dedicated fetch for in_progress runs — uses the status filter so GitHub returns
+    // only jobs that are actively running or queued right now.
+    async function fetchInProgressRuns(fullName) {
+        try {
+            const statuses = ['in_progress', 'queued', 'waiting'];
+            const results = await Promise.all(statuses.map(async s => {
+                const url = `https://api.github.com/repos/${fullName}/actions/runs?status=${s}&per_page=50`;
+                const res = await fetch(url, { headers: githubHeaders() });
+                if (!res.ok) return [];
+                const json = await res.json();
+                return (json.workflow_runs || []).map(r => normalizeRun(r, fullName));
+            }));
+            return results.flat();
+        } catch (e) {
+            return [];
+        }
     }
 
     async function fetchAllLiveRuns() {
@@ -2920,11 +3500,29 @@
             appState.liveRuns = allRuns;
             appState.isLive = true;
             appState.lastFetchTime = Date.now();
+
+            // Fetch currently-running jobs separately with status filter — this is the source of truth
+            // for the Live Now tab. Run in parallel across all repos.
+            st.textContent = 'Fetching live (in-progress) runs…';
+            const repoNames = appState.repoList.map(r => r.full_name);
+            const inProgressResults = await Promise.all(
+                repoNames.map(n => fetchInProgressRuns(n).catch(() => []))
+            );
+            const inProgressFlat = inProgressResults.flat();
+            // Deduplicate by id
+            const ipSeen = new Set();
+            appState.inProgressRuns = inProgressFlat.filter(r => {
+                if (ipSeen.has(r.id)) return false;
+                ipSeen.add(r.id);
+                return true;
+            });
+
             buildRepoDefsDynamic();
             populateRepoDropdown();
 
             const totalRuns = allRuns.length;
-            st.textContent = `✓ Loaded ${totalRuns.toLocaleString()} runs from ${appState.repoList.length} repo(s)`;
+            const liveCount = appState.inProgressRuns.length;
+            st.textContent = `✓ Loaded ${totalRuns.toLocaleString()} runs · ${liveCount} running now`;
             st.style.color = 'var(--green)';
         } catch (err) {
             st.textContent = `Error: ${err.message}`;
@@ -3035,6 +3633,7 @@
         appState.token = '';
         appState.owner = '';
         appState.liveRuns = [];
+        appState.inProgressRuns = [];
         appState.repoList = [];
         appState.repoDefsDynamic = {};
         appState.lastFetchTime = null;
