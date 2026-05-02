@@ -437,6 +437,16 @@
             display: block;
         }
 
+        /* FIX: canvas must fill its .chart-wrap container so Chart.js reads
+           non-zero dimensions even on first render in demo/disabled mode.
+           Without this, clientWidth/clientHeight can be 0 when the content
+           area has opacity:0.35 but is still laid out in the DOM. */
+        .chart-wrap canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
         .section {
             margin-bottom: 24px;
         }
@@ -1132,20 +1142,21 @@
                 transform: none;
             }
         }
-        .fade-in {
+        .fade-in,
+        .fade-in-1,
+        .fade-in-2,
+        .fade-in-3 {
             animation: fadeIn 0.3s ease forwards;
+            opacity: 0; /* start hidden; animation fills to opacity:1 */
         }
         .fade-in-1 {
             animation-delay: 0.05s;
-            opacity: 0;
         }
         .fade-in-2 {
             animation-delay: 0.1s;
-            opacity: 0;
         }
         .fade-in-3 {
             animation-delay: 0.15s;
-            opacity: 0;
         }
 
         /* Refresh button */
@@ -1217,10 +1228,7 @@
                     Failures
                     <span class="nav-count" id="nav-fail-count" style="background:var(--red-dim);color:var(--red);">—</span>
                 </div>
-                <div class="nav-item" onclick="switchTab('heatmap', this)" id="nav-heatmap">
-                    <span class="nav-dot dot-gray"></span>
-                    Heatmap
-                </div>
+
                 <div class="nav-item" onclick="switchTab('timeline', this)" id="nav-timeline">
                     <span class="nav-dot" style="background:var(--purple);"></span>
                     Timeline
@@ -1295,7 +1303,7 @@
             <!-- ── Overview Tab ── -->
             <div class="tab-panel active" id="tab-overview">
                 <div class="metrics" id="metricsRow"></div>
-                <div class="two-col section fade-in-1">
+                <div class="two-col section fade-in fade-in-1">
                     <div class="card">
                         <div class="card-title">run outcomes</div>
                         <div class="chart-wrap" style="height:200px;">
@@ -1310,20 +1318,20 @@
                         </div>
                     </div>
                 </div>
-                <div class="card section fade-in-2">
+                <div class="card section fade-in fade-in-2">
                     <div class="card-title">avg duration trend by workflow</div>
                     <div id="durationLegend" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;"></div>
                     <div class="chart-wrap" style="height:220px;">
                         <canvas id="durationChart" role="img" aria-label="Line chart showing average workflow duration over time"></canvas>
                     </div>
                 </div>
-                <div class="card section fade-in-3">
+                <div class="card section fade-in fade-in-3">
                     <div class="card-title">repository health scorecard</div>
                     <div class="repo-grid" id="overviewRepoGrid"></div>
                 </div>
 
                 <!-- Workflow Efficiency Matrix -->
-                <div class="card section fade-in-3">
+                <div class="card section fade-in fade-in-3">
                     <div class="section-head" style="margin-bottom:16px;">
                         <div>
                             <div class="card-title" style="margin-bottom:2px;">workflow efficiency matrix</div>
@@ -1345,7 +1353,7 @@
                 </div>
 
                 <!-- CI Pulse + Streaks + Time Sinks -->
-                <div class="two-col section fade-in-3" style="align-items:start;">
+                <div class="two-col section fade-in fade-in-3" style="align-items:start;">
                     <div class="card">
                         <div class="section-head" style="margin-bottom:14px;">
                             <div class="card-title" style="margin-bottom:0;">ci pulse</div>
@@ -1366,7 +1374,7 @@
                 </div>
 
                 <!-- MTTR & Burn Rate -->
-                <div class="two-col section fade-in-3" style="align-items:start;">
+                <div class="two-col section fade-in fade-in-3" style="align-items:start;">
                     <div class="card">
                         <div class="section-head" style="margin-bottom:14px;">
                             <div>
@@ -1392,8 +1400,51 @@
                     </div>
                 </div>
 
+
+                <!-- Activity Heatmap (moved from Heatmap tab) -->
+                <div class="card section fade-in fade-in-3">
+                    <div class="section-head" style="margin-bottom:0;">
+                        <div>
+                            <div class="card-title" style="margin-bottom:2px;">activity heatmap — day × hour</div>
+                            <div style="font-size:11px;font-family:var(--mono);color:var(--text3);">run density across the week</div>
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <select class="ctrl-select" id="heatRepo" onchange="renderHeatmap()" style="font-size:11px;">
+                                <option value="all">all repos</option>
+                            </select>
+                            <select class="ctrl-select" id="heatMetric" onchange="renderHeatmap()" style="font-size:11px;">
+                                <option value="runs">run count</option>
+                                <option value="duration">avg duration</option>
+                                <option value="failures">failures</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="heatmapArea" style="margin-top:16px;overflow-x:auto;"></div>
+                    <div class="heat-legend" id="heatLegend"></div>
+                </div>
+
+                <!-- Queue wait vs execution + P95 -->
+                <div class="two-col section fade-in fade-in-3">
+                    <div class="card">
+                        <div class="card-title">queue wait vs execution time (weekly avg)</div>
+                        <div class="chart-wrap" style="height:220px;">
+                            <canvas id="queueChart" role="img" aria-label="Stacked bar chart of queue wait versus execution time per week"></canvas>
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:10px;">
+                            <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text3);"><span style="width:10px;height:10px;border-radius:2px;background:#f0a52b;display:inline-block;"></span>queue wait</span>
+                            <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text3);"><span style="width:10px;height:10px;border-radius:2px;background:#5b8dee;display:inline-block;"></span>execution</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">p95 duration by workflow</div>
+                        <div class="chart-wrap" style="height:220px;">
+                            <canvas id="p95Chart" role="img" aria-label="Horizontal bar chart of p95 workflow durations"></canvas>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Live Now mini-strip in overview -->
-                <div class="card section fade-in-3" id="overviewLiveStrip">
+                <div class="card section fade-in fade-in-3" id="overviewLiveStrip">
                     <div class="section-head" style="margin-bottom:12px;">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div class="live-dot" style="width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1.2s ease infinite;flex-shrink:0;"></div>
@@ -1479,7 +1530,7 @@
                 </div>
                 <div class="repo-grid" id="reposTabGrid"></div>
             </div>
-        </div>
+            </div><!-- /tab-repos -->
 
         <!-- ── All Runs Tab ── -->
         <div class="tab-panel" id="tab-runs">
@@ -1540,47 +1591,6 @@
         </div>
 
         <!-- ── Heatmap Tab ── -->
-        <div class="tab-panel" id="tab-heatmap">
-            <div class="card section">
-                <div class="section-head">
-                    <span class="card-title" style="margin-bottom:0;">activity heatmap — day × hour</span>
-                    <div style="display:flex;gap:6px;">
-                        <select class="ctrl-select" id="heatRepo" onchange="renderHeatmap()" style="font-size:11px;">
-                            <option value="all">all repos</option>
-                        </select>
-                        <select class="ctrl-select" id="heatMetric" onchange="renderHeatmap()" style="font-size:11px;">
-                            <option value="runs">run count</option>
-                            <option value="duration">avg duration</option>
-                            <option value="failures">failures</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="heatmapArea" style="margin-top:16px;overflow-x:auto;"></div>
-                <div class="heat-legend" id="heatLegend"></div>
-            </div>
-            <div class="two-col section">
-                <div class="card">
-                    <div class="card-title">queue wait vs execution time (weekly avg)</div>
-                    <div class="chart-wrap" style="height:220px;">
-                        <canvas id="queueChart" role="img" aria-label="Stacked bar chart of queue wait versus execution time per week"></canvas>
-                    </div>
-                    <div style="display:flex;gap:12px;margin-top:10px;">
-                        <span
-                        style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text3);"><span
-                        style="width:10px;height:10px;border-radius:2px;background:#f0a52b;display:inline-block;"></span>queue
-                    wait</span>
-                    <span
-                    style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text3);"><span
-                    style="width:10px;height:10px;border-radius:2px;background:#5b8dee;display:inline-block;"></span>execution</span>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-title">p95 duration by workflow</div>
-                <div class="chart-wrap" style="height:220px;">
-                    <canvas id="p95Chart" role="img" aria-label="Horizontal bar chart of p95 workflow durations"></canvas>
-                </div>
-            </div>
-        </div>
     </div>
 
         <!-- ── Timeline Tab ── -->
@@ -1960,13 +1970,58 @@
     }
 
     // ─── Chart registry ──────────────────────────────────────────────────
+    // Global Chart.js defaults — set once before any chart is created
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.color = '#8b909e';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+        Chart.defaults.font.family = "'JetBrains Mono', monospace";
+        Chart.defaults.font.size = 11;
+    }
+
     const _charts = {};
 
     function mkChart(id, cfg) {
-        if (_charts[id]) { _charts[id].destroy(); }
-        const ctx = document.getElementById(id);
-        if (!ctx) return;
-        _charts[id] = new Chart(ctx, cfg);
+        if (_charts[id]) {
+            _charts[id].destroy();
+            delete _charts[id];
+        }
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+
+        function doCreate(el) {
+            if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+            _charts[id] = new Chart(el, cfg);
+        }
+
+        // If canvas has real dimensions, create immediately
+        if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+            doCreate(canvas);
+            return;
+        }
+
+        // Canvas is in a hidden/zero-size context (e.g. display:none tab just shown).
+        // Use ResizeObserver for reliable detection — it fires after the browser
+        // has finished layout, unlike rAF which can beat style recalc.
+        let ro;
+        const timeout = setTimeout(() => {
+            // Fallback: if RO never fires within 500ms, force-create anyway
+            if (ro) ro.disconnect();
+            const el = document.getElementById(id);
+            if (el && !_charts[id]) doCreate(el);
+        }, 500);
+
+        ro = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                    ro.disconnect();
+                    clearTimeout(timeout);
+                    const el = document.getElementById(id);
+                    if (el && !_charts[id]) doCreate(el);
+                    break;
+                }
+            }
+        });
+        ro.observe(canvas);
     }
 
     // ─── Render metrics strip ────────────────────────────────────────────
@@ -2098,8 +2153,20 @@
         // Burn rate
         renderBurnRate(data);
 
+        // Heatmap & queue charts (now part of overview)
+        renderHeatmap();
+        renderQueueChart();
+
         // Live strip in overview
         renderOverviewLiveStrip();
+
+        // Workflow efficiency matrix
+        renderMatrix();
+
+        // CI pulse, streak tracker, time sinks
+        renderCIPulse(data);
+        renderStreak(data);
+        renderTimeSinks(data);
     }
 
     // ─── Repo grid (shared renderer) ─────────────────────────────────────
@@ -2404,7 +2471,17 @@
 
     // ─── Heatmap ─────────────────────────────────────────────────────────
     function renderHeatmap() {
-        const hRepo = document.getElementById('heatRepo').value;
+        // Populate the repo dropdown first so .value is valid before we filter
+        const heatRepoSelect = document.getElementById('heatRepo');
+        const currentVal = heatRepoSelect.value;
+        const repoDefs = getRepoDefs();
+        heatRepoSelect.innerHTML = '<option value="all">all repos</option>' +
+            Object.keys(repoDefs).map(k => `<option value="${k}">${k}</option>`).join('');
+        if ([...heatRepoSelect.options].some(o => o.value === currentVal)) {
+            heatRepoSelect.value = currentVal;
+        }
+
+        const hRepo = heatRepoSelect.value;
         const hMetric = document.getElementById('heatMetric').value;
         const days = parseInt(document.getElementById('timeFilter').value || '7');
         const cutoff = Date.now() - days * 86400 * 1000;
@@ -2449,16 +2526,6 @@
 
         document.getElementById('heatLegend').innerHTML =
             `<span class="heat-leg-label">less</span>${heatRamps.map(c => `<div class="heat-leg-cell" style="background:${c};"></div>`).join('')}<span class="heat-leg-label" style="margin-left:4px;">more</span>`;
-
-        // Update heat repo dropdown
-        const heatRepoSelect = document.getElementById('heatRepo');
-        const currentVal = heatRepoSelect.value;
-        const repoDefs = getRepoDefs();
-        heatRepoSelect.innerHTML = '<option value="all">all repos</option>' +
-            Object.keys(repoDefs).map(k => `<option value="${k}">${k}</option>`).join('');
-        if ([...heatRepoSelect.options].some(o => o.value === currentVal)) {
-            heatRepoSelect.value = currentVal;
-        }
     }
 
     function renderQueueChart() {
@@ -2513,6 +2580,187 @@
                     y: { ticks: { color: '#8b909e', font: { size: 10, family: 'JetBrains Mono' } },
                         grid: { display: false } } } }
         });
+    }
+
+    // ─── Workflow Efficiency Matrix ──────────────────────────────────────
+    function renderMatrix() {
+        const metric = (document.getElementById('matrixMetric') && document.getElementById('matrixMetric').value) || 'success';
+        const source = appState.isLive ? appState.liveRuns : ALL_RUNS;
+        const days = parseInt(document.getElementById('timeFilter').value || '7');
+        const cutoff = Date.now() - days * 86400 * 1000;
+        const data = source.filter(r => r.ts >= cutoff);
+        const repoDefs = getRepoDefs();
+        const repos = Object.keys(repoDefs);
+        const workflows = [...new Set(data.map(r => r.wf))].sort().slice(0, 10);
+        if (!repos.length || !workflows.length) {
+            document.getElementById('matrixWrap').innerHTML = '<div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:16px;">No data</div>';
+            return;
+        }
+
+        // Build cell values
+        const cells = {};
+        let maxVal = 0;
+        repos.forEach(repo => {
+            workflows.forEach(wf => {
+                const runs = data.filter(r => r.repo === repo && r.wf === wf);
+                if (!runs.length) { cells[`${repo}|${wf}`] = null; return; }
+                let val;
+                if (metric === 'success') val = Math.round(runs.filter(r => r.status === 'success').length / runs.length * 100);
+                else if (metric === 'duration') val = Math.round(runs.reduce((a, r) => a + r.dur, 0) / runs.length / 60 * 10) / 10;
+                else val = runs.length;
+                cells[`${repo}|${wf}`] = val;
+                if (val > maxVal) maxVal = val;
+            });
+        });
+
+        // Color scale
+        function cellColor(val, max) {
+            if (val === null) return 'var(--bg3)';
+            const t = max > 0 ? val / max : 0;
+            if (metric === 'success') {
+                // green = high success, red = low
+                const r = Math.round(240 * (1 - t * 0.7));
+                const g = Math.round(100 + 107 * t);
+                return `rgba(${r},${g},${metric === 'success' ? Math.round(80 + 62 * t) : 80},0.65)`;
+            }
+            // blue scale for duration/volume
+            return `rgba(91,${Math.round(141 * t + 30 * (1-t))},238,${0.15 + 0.7 * t})`;
+        }
+
+        const shortRepo = r => r.split('/').pop().substring(0, 10);
+        const shortWf = w => w.length > 14 ? w.substring(0, 13) + '…' : w;
+        const fmt = (v, m) => v === null ? '—' : m === 'success' ? `${v}%` : m === 'duration' ? `${v}m` : v;
+
+        let html = `<table style="border-collapse:collapse;font-family:var(--mono);font-size:11px;min-width:100%;">`;
+        // Header row
+        html += `<tr><th style="padding:4px 8px;text-align:left;color:var(--text3);font-weight:400;white-space:nowrap;min-width:80px;"></th>`;
+        workflows.forEach(wf => {
+            html += `<th style="padding:4px 6px;text-align:center;color:var(--text3);font-weight:400;white-space:nowrap;font-size:10px;">${shortWf(wf)}</th>`;
+        });
+        html += `</tr>`;
+        // Data rows
+        repos.forEach(repo => {
+            html += `<tr><td style="padding:5px 8px;color:var(--text2);white-space:nowrap;font-size:11px;border-right:1px solid var(--border);">${shortRepo(repo)}</td>`;
+            workflows.forEach(wf => {
+                const v = cells[`${repo}|${wf}`];
+                const bg = cellColor(v, maxVal);
+                const text = fmt(v, metric);
+                const textColor = v === null ? 'var(--text3)' : metric === 'success' && v >= 90 ? '#3ecf8e' : metric === 'success' && v < 70 ? '#f05252' : 'var(--text)';
+                html += `<td title="${repo} · ${wf}: ${text}" style="padding:5px 6px;text-align:center;background:${bg};border:1px solid var(--border);color:${textColor};min-width:54px;">${text}</td>`;
+            });
+            html += `</tr>`;
+        });
+        html += `</table>`;
+        document.getElementById('matrixWrap').innerHTML = html;
+
+        // Legend bar
+        const steps = 8;
+        document.getElementById('matrixLegendBar').innerHTML = Array.from({length: steps}, (_, i) => {
+            const t = i / (steps - 1);
+            return `<div style="width:20px;height:10px;border-radius:2px;background:${cellColor(t * maxVal, maxVal)};"></div>`;
+        }).join('');
+        document.getElementById('matrixLegendLabel').textContent =
+            metric === 'success' ? '% success rate' : metric === 'duration' ? 'avg mins' : '# runs';
+    }
+
+    // ─── CI Pulse Feed ───────────────────────────────────────────────────
+    function renderCIPulse(data) {
+        const el = document.getElementById('ciPulseFeed');
+        if (!el) return;
+        // Build notable events: recent failures, long runs, flaky repeats
+        const sorted = [...data].sort((a, b) => b.ts - a.ts);
+        const events = [];
+        // Recent failures (top 5)
+        sorted.filter(r => r.status === 'failed').slice(0, 5).forEach(r => {
+            events.push({ ts: r.ts, icon: '✕', color: 'var(--red)', text: `${r.wf} failed`, sub: r.repo.split('/').pop(), flaky: r.flaky });
+        });
+        // Slow runs: duration > 2× avg
+        const avgDur = data.length ? data.reduce((a, r) => a + r.dur, 0) / data.length : 0;
+        sorted.filter(r => r.dur > avgDur * 2 && r.status === 'success').slice(0, 3).forEach(r => {
+            events.push({ ts: r.ts, icon: '⚠', color: 'var(--amber)', text: `${r.wf} slow (${fmtDur(r.dur)})`, sub: r.repo.split('/').pop() });
+        });
+        // Recent successes (just 2 for variety)
+        sorted.filter(r => r.status === 'success' && r.dur <= avgDur).slice(0, 2).forEach(r => {
+            events.push({ ts: r.ts, icon: '✓', color: 'var(--green)', text: `${r.wf} passed`, sub: r.repo.split('/').pop() });
+        });
+        // Sort by recency
+        events.sort((a, b) => b.ts - a.ts);
+        const top = events.slice(0, 10);
+        if (!top.length) {
+            el.innerHTML = '<div style="color:var(--text3);font-size:11px;font-family:var(--mono);padding:8px 0;">No events in selected period</div>';
+            return;
+        }
+        el.innerHTML = top.map(ev => `
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+                <span style="font-size:12px;color:${ev.color};flex-shrink:0;line-height:1.5;">${ev.icon}</span>
+                <div style="min-width:0;">
+                    <div style="font-size:12px;font-family:var(--mono);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${ev.text}${ev.flaky ? ' <span style="font-size:10px;color:var(--amber);">(flaky)</span>' : ''}
+                    </div>
+                    <div style="font-size:10px;color:var(--text3);margin-top:1px;">${ev.sub} · ${timeAgo(ev.ts)}</div>
+                </div>
+            </div>`).join('');
+    }
+
+    // ─── Streak Tracker ──────────────────────────────────────────────────
+    function renderStreak(data) {
+        const el = document.getElementById('streakGrid');
+        if (!el) return;
+        const repoDefs = getRepoDefs();
+        const repos = Object.values(repoDefs).slice(0, 6);
+        el.innerHTML = repos.map(repo => {
+            const runs = [...data.filter(r => r.repo === repo.key)].sort((a, b) => b.ts - a.ts);
+            // Current consecutive success streak from latest run
+            let streak = 0;
+            for (const r of runs) {
+                if (r.status === 'success') streak++;
+                else break;
+            }
+            const total = runs.length;
+            const succRate = total ? Math.round(runs.filter(r => r.status === 'success').length / total * 100) : 0;
+            const color = streak >= 10 ? 'var(--green)' : streak >= 5 ? 'var(--amber)' : streak > 0 ? 'var(--text2)' : 'var(--red)';
+            const label = streak === 0 ? 'broken' : streak === 1 ? '1 run' : `${streak} runs`;
+            return `<div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:18px;font-family:var(--mono);font-weight:400;color:${color};min-width:32px;text-align:right;">${streak}</span>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;font-family:var(--mono);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${repo.key.split('/').pop()}</div>
+                    <div style="font-size:10px;color:var(--text3);">streak · ${succRate}% overall</div>
+                </div>
+                <div style="display:flex;gap:2px;">${Array.from({length:Math.min(streak,10)}, () =>
+                    `<div style="width:6px;height:16px;border-radius:2px;background:${color};opacity:0.7;"></div>`).join('')}${
+                    streak === 0 ? '<div style="width:6px;height:16px;border-radius:2px;background:var(--red);opacity:0.5;"></div>' : ''
+                }</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ─── Top Time Sinks ──────────────────────────────────────────────────
+    function renderTimeSinks(data) {
+        const el = document.getElementById('timeSinks');
+        if (!el) return;
+        // Aggregate total compute minutes per workflow
+        const wfTotals = {};
+        data.forEach(r => {
+            wfTotals[r.wf] = (wfTotals[r.wf] || 0) + r.dur;
+        });
+        const sorted = Object.entries(wfTotals).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        if (!sorted.length) { el.innerHTML = '<div style="color:var(--text3);font-size:11px;">No data</div>'; return; }
+        const maxMins = sorted[0][1] / 60;
+        const colors = ['#5b8dee', '#3ecf8e', '#f0a52b', '#a78bfa', '#f05252', '#38b2ac'];
+        el.innerHTML = sorted.map(([wf, totalSec], i) => {
+            const mins = Math.round(totalSec / 60);
+            const pct = Math.round(mins / maxMins * 100);
+            const shortWf = wf.length > 20 ? wf.substring(0, 19) + '…' : wf;
+            return `<div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <span style="font-size:11px;font-family:var(--mono);color:var(--text2);">${shortWf}</span>
+                    <span style="font-size:11px;font-family:var(--mono);color:var(--text3);">${mins >= 60 ? `${Math.round(mins/60)}h ${mins%60}m` : `${mins}m`}</span>
+                </div>
+                <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;">
+                    <div style="height:100%;width:${pct}%;background:${colors[i]};border-radius:2px;transition:width 0.4s;"></div>
+                </div>
+            </div>`;
+        }).join('');
     }
 
     // ─── Sidebar repo list ───────────────────────────────────────────────
@@ -2586,7 +2834,7 @@
     // ─── Tab switching ───────────────────────────────────────────────────
     let activeTab = 'overview';
     const tabTitles = { overview: 'overview', repos: 'repositories', runs: 'all runs', failures: 'failure analysis',
-        heatmap: 'heatmap & timing', timeline: 'timeline & runtimes', live: 'live now' };
+        timeline: 'timeline & runtimes', live: 'live now' };
 
     function switchTab(tab, el) {
         if (!appState.isLive && tab !== 'overview') {
@@ -2600,7 +2848,9 @@
         activeTab = tab;
         const modeLabel = appState.isLive ? 'live' : 'demo data';
         document.getElementById('topbar-title').textContent = `${tabTitles[tab]} · ${modeLabel}`;
-        refreshCurrentTab();
+        // Defer one frame so the newly-active panel's display:block is painted
+        // before Chart.js reads canvas dimensions.
+        requestAnimationFrame(() => refreshCurrentTab());
     }
 
     // ─── Refresh ─────────────────────────────────────────────────────────
@@ -2608,17 +2858,18 @@
         const data = getFiltered();
         renderMetrics(data);
         renderSidebarRepos();
+        // Populate dropdowns BEFORE rendering tabs so that heatmap/timeline
+        // repo selects already have the correct options when renderHeatmap()
+        // reads their .value during renderOverview().
+        populateRepoDropdown();
         if (activeTab === 'overview') renderOverview(data);
         else if (activeTab === 'repos') renderReposTab();
         else if (activeTab === 'runs') renderRunsTab();
         else if (activeTab === 'failures') renderFailures(data);
-        else if (activeTab === 'heatmap') { renderHeatmap();
-            renderQueueChart(); }
         else if (activeTab === 'timeline') renderTimeline();
         else if (activeTab === 'live') renderLiveTab();
         // Always update live badge count
         updateLiveBadge();
-        populateRepoDropdown();
     }
 
     function refresh() {
@@ -2907,7 +3158,7 @@
                     backgroundColor: 'rgba(91,141,238,0.06)',
                     borderColor: 'rgba(91,141,238,0.4)',
                     borderWidth: 1,
-                    borderDash: [4, 3],
+                    // borderDash not supported at dataset level in Chart.js v4; use segment API if needed
                     pointRadius: 0,
                 }]
             },
@@ -3573,7 +3824,15 @@
 
             // Success — enable the UI
             enableLiveMode();
-            refreshCurrentTab();
+            // Wait for the overlay CSS transition (0.4s) to fully complete
+            // before rendering charts and the heatmap. A single rAF fires
+            // before the browser has finished laying out the now-visible
+            // canvases, causing Chart.js to read 0-dimensions and the
+            // heatmap flex cells to have no size.
+            setTimeout(() => {
+                populateRepoDropdown(); // ensure heatmap dropdowns are populated first
+                refreshCurrentTab();
+            }, 450);
 
             st.textContent =
                 `✓ Connected · ${appState.repoList.length} repo(s) · ${appState.liveRuns.length.toLocaleString()} runs`;
@@ -3692,7 +3951,7 @@
 
         // Switch to overview
         switchTab('overview', document.getElementById('nav-overview'));
-        refreshCurrentTab();
+        requestAnimationFrame(() => refreshCurrentTab());
     }
 
     // ─── Init ────────────────────────────────────────────────────────────
@@ -3723,8 +3982,8 @@
         refreshCurrentTab();
     }
 
-    // Run init
-    init();
+    // Run init after first paint so canvases have non-zero dimensions
+    requestAnimationFrame(() => init());
 </script>
 </body>
 </html>
