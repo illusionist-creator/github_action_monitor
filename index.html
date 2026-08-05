@@ -1183,6 +1183,99 @@
             cursor: not-allowed;
             pointer-events: none;
         }
+
+        /* ─── Run Logs Viewer ─────────────────────────────────── */
+        .logs-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--purple-dim); border: 1px solid rgba(167,139,250,0.25);
+            color: var(--purple); font-family: var(--mono); font-size: 11px;
+            padding: 6px 11px; border-radius: var(--radius); cursor: pointer;
+            transition: background var(--transition-speed), border-color var(--transition-speed);
+        }
+        .logs-btn:hover:not(:disabled) { background: rgba(167,139,250,0.22); border-color: rgba(167,139,250,0.45); }
+        .logs-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+        .logs-mini {
+            background: transparent; border: 1px solid var(--border2); color: var(--text2);
+            font-family: var(--mono); font-size: 10px; padding: 3px 8px;
+            border-radius: 5px; cursor: pointer; flex-shrink: 0;
+        }
+        .logs-mini:hover { color: var(--purple); border-color: rgba(167,139,250,0.45); }
+
+        tr.run-row { cursor: pointer; }
+        tr.run-row:hover { background: var(--bg3); }
+        .run-row .logs-cue { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+        tr.run-row:hover .logs-cue { color: var(--purple); }
+
+        .log-modal { position: fixed; inset: 0; z-index: 200; display: none; }
+        .log-modal.open { display: block; }
+        .log-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.62); }
+        .log-panel {
+            position: absolute; top: 0; right: 0; bottom: 0; width: min(920px, 94vw);
+            background: var(--bg2); border-left: 1px solid var(--border2);
+            display: flex; flex-direction: column;
+            box-shadow: -24px 0 70px rgba(0,0,0,0.55);
+            animation: logSlideIn .2s ease;
+        }
+        @keyframes logSlideIn { from { transform: translateX(30px); opacity: .3; } to { transform: none; opacity: 1; } }
+
+        .log-head { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg2); }
+        .log-head-row { display: flex; align-items: flex-start; gap: 12px; }
+        .log-title { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--text); flex: 1; min-width: 0; word-break: break-word; }
+        .log-close { background: none; border: 1px solid var(--border2); color: var(--text2); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
+        .log-close:hover { color: var(--text); border-color: var(--border2); background: var(--bg4); }
+        .log-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 9px; font-family: var(--mono); font-size: 11px; color: var(--text3); }
+        .log-meta b { color: var(--text2); font-weight: 400; }
+
+        .log-body { flex: 1; overflow-y: auto; padding: 16px 20px 26px; }
+        .log-foot { flex-shrink: 0; border-top: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; color: var(--text3); }
+
+        .log-job { border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 12px; overflow: hidden; background: var(--bg3); }
+        .log-job-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; }
+        .log-job-head:hover { background: var(--bg4); }
+        .log-job-name { font-family: var(--mono); font-size: 12.5px; color: var(--text); flex: 1; min-width: 0; word-break: break-word; }
+        .log-job-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 2px; }
+        .log-job-body { display: none; border-top: 1px solid var(--border); padding: 4px 0 8px; }
+        .log-job.open .log-job-body { display: block; }
+        .log-caret { color: var(--text3); font-size: 10px; transition: transform var(--transition-speed); flex-shrink: 0; }
+        .log-job.open .log-caret { transform: rotate(90deg); }
+
+        .log-step { display: flex; align-items: baseline; gap: 10px; padding: 6px 14px 6px 16px; font-family: var(--mono); font-size: 11.5px; border-left: 2px solid transparent; }
+        .log-step:hover { background: rgba(255,255,255,0.02); }
+        .log-step-num { color: var(--text3); font-size: 10px; min-width: 18px; }
+        .log-step-name { flex: 1; min-width: 0; color: var(--text2); word-break: break-word; }
+        .log-step-dur { color: var(--text3); font-size: 10.5px; flex-shrink: 0; }
+        .log-step.s-failure { border-left-color: var(--red); }
+        .log-step.s-failure .log-step-name { color: var(--red); }
+        .log-step.s-skipped .log-step-name { color: var(--text3); }
+        .log-step.s-running { border-left-color: var(--blue); }
+        .log-step.s-running .log-step-name { color: var(--blue); }
+
+        .log-anno { margin: 8px 14px 4px; border: 1px solid rgba(240,82,82,0.22); background: var(--red-dim); border-radius: var(--radius); padding: 9px 11px; }
+        .log-anno.warning { border-color: rgba(240,165,43,0.22); background: var(--amber-dim); }
+        .log-anno.notice { border-color: rgba(91,141,238,0.22); background: var(--blue-dim); }
+        .log-anno-title { font-family: var(--mono); font-size: 10px; color: var(--text2); margin-bottom: 4px; }
+        .log-anno-msg { font-family: var(--mono); font-size: 11.5px; color: var(--text); white-space: pre-wrap; word-break: break-word; line-height: 1.45; }
+
+        .log-raw-wrap { margin: 6px 14px 10px; }
+        .log-raw { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; max-height: 380px; overflow: auto; font-family: var(--mono); font-size: 11px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+        .log-raw .l-err { color: var(--red); }
+        .log-raw .l-warn { color: var(--amber); }
+        .log-raw .l-grp { color: var(--blue); }
+        .log-raw .l-cmd { color: var(--text3); }
+
+        .log-note { font-family: var(--mono); font-size: 11px; color: var(--text3); line-height: 1.6; padding: 10px 12px; border: 1px dashed var(--border2); border-radius: var(--radius); }
+        .log-note.warn { border-color: rgba(240,165,43,0.3); color: var(--text2); }
+        .log-note a, .log-foot a { color: var(--blue); }
+
+        .log-banner { font-family: var(--mono); font-size: 10.5px; padding: 8px 11px; border-radius: var(--radius); margin-bottom: 14px; line-height: 1.5; }
+        .log-banner.demo { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,165,43,0.25); }
+        .log-banner.err { background: var(--red-dim); color: var(--red); border: 1px solid rgba(240,82,82,0.25); }
+
+        .log-spin { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--border2); border-top-color: var(--purple); border-radius: 50%; animation: logSpin .7s linear infinite; vertical-align: -1px; }
+        @keyframes logSpin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 640px) { .log-panel { width: 100vw; } }
     </style>
 </head>
 <body>
@@ -1285,6 +1378,17 @@
                         <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
                     </svg>
                     Refresh
+                </button>
+                <button class="logs-btn" id="lastLogsBtn" onclick="openLastRunLogs()"
+                    title="Open the job & step log for the most recent run in the current filter">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="8" y1="13" x2="16" y2="13" />
+                        <line x1="8" y1="17" x2="13" y2="17" />
+                    </svg>
+                    Last run logs
                 </button>
                 <select class="ctrl-select" id="repoFilter" onchange="onRepoFilterChange()" disabled>
                     <option value="all">All repos</option>
@@ -1559,6 +1663,7 @@
                                 <th>duration</th>
                                 <th>queued</th>
                                 <th>ran</th>
+                                <th style="text-align:right;">logs</th>
                             </tr>
                         </thead>
                         <tbody id="runsTableBody"></tbody>
@@ -1810,7 +1915,7 @@
                         break; } }
                 const flaky = status === 'failed' && seqRand() > 0.45;
                 runs.push({ ts, repo: repo.key, wf, status, dur, queue, cause, flaky, branch: BRANCHES_DEMO[sr(0,
-                        BRANCHES_DEMO.length - 1)] });
+                        BRANCHES_DEMO.length - 1)], id: `demo-${repo.key}-${i}` });
             }
         });
         return runs;
@@ -2352,7 +2457,7 @@
         const repoDefs = getRepoDefs();
 
         document.getElementById('runsTableBody').innerHTML = filtered.map(r => `
-        <tr>
+        <tr class="run-row" onclick="openLogsFor('${registerRun(r)}', event)" title="View job & step log for this run">
           <td><span class="badge ${stBadge[r.status] || 'badge-gray'}">${r.status}</span></td>
           <td class="run-name">${r.wf}</td>
           <td><span style="color:${(repoDefs[r.repo] || {}).fgCol || 'var(--text2)'};">${r.repo}</span></td>
@@ -2360,6 +2465,7 @@
           <td>${fmtDur(r.dur)}</td>
           <td style="color:var(--text3)">${r.queue}s</td>
           <td style="color:var(--text3)">${timeAgo(r.ts)}</td>
+          <td style="text-align:right;"><span class="logs-cue">logs &rsaquo;</span></td>
         </tr>`).join('');
 
         // Populate workflow filter dynamically
@@ -3409,6 +3515,7 @@
                                 : `<div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;">~${fmtDur(remaining)} left</div>`
                             }
                         </div>
+                        <button class="logs-mini" onclick="openLogsFor('${registerRun(r)}', event)" title="View job & step log">logs</button>
                     </div>
                     <!-- Progress bar -->
                     <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;position:relative;">
@@ -3453,6 +3560,7 @@
                         <span style="font-family:var(--mono);font-size:11px;color:var(--text3);">${fmtDur(r.dur)}</span>
                         <span style="font-family:var(--mono);font-size:11px;color:var(--text3);">${timeAgo(r.ts)}</span>
                         <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${stBgC};color:${stC};font-family:var(--mono);">${r.status}</span>
+                        <button class="logs-mini" onclick="openLogsFor('${registerRun(r)}', event)" title="View job & step log">logs</button>
                     </div>
                 </div>`;
             }).join('');
@@ -3954,6 +4062,373 @@
         requestAnimationFrame(() => refreshCurrentTab());
     }
 
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  RUN LOGS VIEWER
+    //  Live mode  : real data from the GitHub Actions REST API
+    //                 - GET /repos/{o}/{r}/actions/runs/{id}          (run detail)
+    //                 - GET /repos/{o}/{r}/actions/runs/{id}/jobs     (jobs + steps)
+    //                 - GET {job.check_run_url}/annotations           (error annotations)
+    //                 - GET /repos/{o}/{r}/actions/jobs/{id}/logs     (raw text, opt-in)
+    //  Demo mode  : synthesised placeholder steps, clearly badged as such
+    // ═══════════════════════════════════════════════════════════════════
+
+    const RUN_REGISTRY = new Map();
+    const logsState = { run: null, jobs: [], detail: null, demo: false, reqId: 0 };
+
+    function escHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function runKey(r) { return `${r.repo}::${r.id != null ? r.id : r.ts}`; }
+
+    function registerRun(r) { const k = runKey(r); RUN_REGISTRY.set(k, r); return k; }
+
+    function openLogsFor(key, ev) {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        const r = RUN_REGISTRY.get(key);
+        if (r) openLogsModal(r);
+    }
+
+    // A real GitHub run id is numeric. Demo/seed rows use string ids.
+    function isRealRunId(id) { return id != null && /^\d+$/.test(String(id)); }
+
+    function canFetchRealLogs(run) {
+        return appState.isLive && !!appState.token && isRealRunId(run.id) && /\//.test(run.repo);
+    }
+
+    function ghRunUrl(run) {
+        return isRealRunId(run.id) && /\//.test(run.repo)
+            ? `https://github.com/${run.repo}/actions/runs/${run.id}`
+            : null;
+    }
+
+    // ─── Entry point: most recent run under the current filters ─────────
+    function openLastRunLogs() {
+        const pool = [...getLiveRuns(), ...getFiltered()];
+        if (!pool.length) {
+            openLogsModal(null);
+            return;
+        }
+        const latest = pool.slice().sort((a, b) => (b.startedAt || b.ts) - (a.startedAt || a.ts))[0];
+        openLogsModal(latest);
+    }
+
+    // ─── Modal open / close ─────────────────────────────────────────────
+    async function openLogsModal(run) {
+        const modal = document.getElementById('logModal');
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+
+        if (!run) {
+            document.getElementById('logTitle').textContent = 'no runs available';
+            document.getElementById('logMeta').innerHTML = '';
+            document.getElementById('logBody').innerHTML =
+                '<div class="log-note">There are no runs in the current repo / time-range filter. Widen the time filter or connect live data.</div>';
+            document.getElementById('logFoot').innerHTML = '';
+            return;
+        }
+
+        const reqId = ++logsState.reqId;
+        logsState.run = run; logsState.jobs = []; logsState.detail = null; logsState.demo = false;
+
+        renderLogHeader(run);
+        document.getElementById('logFoot').innerHTML = '';
+        document.getElementById('logBody').innerHTML =
+            '<div class="log-note"><span class="log-spin"></span>&nbsp; fetching job breakdown from GitHub…</div>';
+
+        if (!canFetchRealLogs(run)) {
+            logsState.demo = true;
+            logsState.jobs = synthesiseDemoJobs(run);
+            if (reqId === logsState.reqId) renderLogBody();
+            return;
+        }
+
+        try {
+            const [detail, jobs] = await Promise.all([
+                fetchRunDetail(run.repo, run.id).catch(() => null),
+                fetchRunJobs(run.repo, run.id),
+            ]);
+            if (reqId !== logsState.reqId) return; // superseded by a newer open
+            logsState.detail = detail;
+            logsState.jobs = jobs;
+            renderLogHeader(run);
+            renderLogBody();
+            // Annotations are a second round-trip; fill them in once they land.
+            attachAnnotations(run.repo, jobs).then(() => {
+                if (reqId === logsState.reqId) renderLogBody();
+            });
+        } catch (err) {
+            if (reqId !== logsState.reqId) return;
+            const url = ghRunUrl(run);
+            document.getElementById('logBody').innerHTML =
+                `<div class="log-banner err">Could not load jobs for this run.<br>${escHtml(err.message || err)}</div>` +
+                `<div class="log-note">Common causes: the token lacks the <b>actions:read</b> scope for this repo, the run was deleted, or logs are past the retention window.` +
+                (url ? `<br><br><a href="${url}" target="_blank" rel="noopener">Open this run on GitHub &#8599;</a>` : '') +
+                `</div>`;
+        }
+    }
+
+    function closeLogsModal() {
+        logsState.reqId++;                       // cancel any in-flight render
+        document.getElementById('logModal').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.getElementById('logModal').classList.contains('open')) {
+            closeLogsModal();
+        }
+    });
+
+    // ─── GitHub API calls ───────────────────────────────────────────────
+    async function fetchRunJobs(fullName, runId) {
+        const { data } = await githubFetch(
+            `https://api.github.com/repos/${fullName}/actions/runs/${runId}/jobs?per_page=100`);
+        return data.jobs || [];
+    }
+
+    async function fetchRunDetail(fullName, runId) {
+        const { data } = await githubFetch(
+            `https://api.github.com/repos/${fullName}/actions/runs/${runId}`);
+        return data;
+    }
+
+    // Failure annotations live on the job's check-run. The jobs payload exposes
+    // check_run_url; if it is absent we simply skip (handled defensively).
+    async function attachAnnotations(fullName, jobs) {
+        const failing = jobs.filter(j => ['failure', 'timed_out', 'action_required'].includes(j.conclusion));
+        await Promise.all(failing.slice(0, 8).map(async job => {
+            const url = job.check_run_url
+                ? `${job.check_run_url}/annotations`
+                : `https://api.github.com/repos/${fullName}/check-runs/${job.id}/annotations`;
+            try {
+                const { data } = await githubFetch(url);
+                job.__annotations = Array.isArray(data) ? data : [];
+            } catch (e) {
+                job.__annotations = [];
+            }
+        }));
+    }
+
+    // ─── Header ─────────────────────────────────────────────────────────
+    function renderLogHeader(run) {
+        const d = logsState.detail;
+        const stCol = { success: 'var(--green)', failed: 'var(--red)', cancelled: 'var(--amber)',
+            skipped: 'var(--text3)', in_progress: 'var(--blue)' };
+        document.getElementById('logTitle').innerHTML =
+            `${escHtml(run.wf)} <span style="color:${stCol[run.status] || 'var(--text3)'};font-size:12px;">&#9679; ${escHtml(run.status)}</span>`;
+
+        const bits = [
+            `<span><b>repo</b> ${escHtml(run.repo)}</span>`,
+            `<span><b>branch</b> ${escHtml(run.branch || '—')}</span>`,
+            `<span><b>duration</b> ${fmtDur(run.dur || 0)}</span>`,
+            `<span><b>queued</b> ${run.queue != null ? run.queue + 's' : '—'}</span>`,
+            `<span><b>started</b> ${new Date(run.startedAt || run.ts).toLocaleString()}</span>`,
+        ];
+        if (isRealRunId(run.id)) bits.push(`<span><b>run</b> #${escHtml(run.id)}</span>`);
+        if (d) {
+            if (d.run_attempt) bits.push(`<span><b>attempt</b> ${escHtml(d.run_attempt)}</span>`);
+            if (d.event) bits.push(`<span><b>event</b> ${escHtml(d.event)}</span>`);
+            if (d.actor && d.actor.login) bits.push(`<span><b>actor</b> ${escHtml(d.actor.login)}</span>`);
+        }
+        document.getElementById('logMeta').innerHTML = bits.join('');
+    }
+
+    // ─── Body ───────────────────────────────────────────────────────────
+    function renderLogBody() {
+        const run = logsState.run;
+        const jobs = logsState.jobs || [];
+        let html = '';
+
+        if (logsState.demo) {
+            html += `<div class="log-banner demo">Demo data &mdash; these steps are synthesised placeholders, not real GitHub logs. Connect a token in the sidebar to load the actual job &amp; step breakdown.</div>`;
+        }
+
+        if (!jobs.length) {
+            html += `<div class="log-note">GitHub returned no jobs for this run. That usually means the run was skipped, was deleted, or its logs have aged out of the retention window (90 days on public repos by default &mdash; <b>please verify against your own org settings</b>).</div>`;
+        }
+
+        jobs.forEach((job, i) => {
+            const steps = job.steps || [];
+            const conc = job.conclusion || job.status || 'unknown';
+            const dot = { success: 'var(--green)', failure: 'var(--red)', cancelled: 'var(--amber)',
+                skipped: 'var(--text3)', in_progress: 'var(--blue)', queued: 'var(--text3)' }[conc] || 'var(--text3)';
+            const failedSteps = steps.filter(s => s.conclusion === 'failure').length;
+            const jobDur = durBetween(job.started_at, job.completed_at);
+            const openByDefault = conc === 'failure' || conc === 'in_progress' || jobs.length === 1;
+
+            html += `<div class="log-job${openByDefault ? ' open' : ''}" id="logjob-${i}">
+                <div class="log-job-head" onclick="document.getElementById('logjob-${i}').classList.toggle('open')">
+                    <span class="log-caret">&#9654;</span>
+                    <span style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0;"></span>
+                    <div style="flex:1;min-width:0;">
+                        <div class="log-job-name">${escHtml(job.name || 'job')}</div>
+                        <div class="log-job-sub">${escHtml(conc)} &middot; ${steps.length} step${steps.length !== 1 ? 's' : ''}${failedSteps ? ` &middot; <span style="color:var(--red)">${failedSteps} failed</span>` : ''}${jobDur ? ` &middot; ${jobDur}` : ''}${job.runner_name ? ` &middot; ${escHtml(job.runner_name)}` : ''}</div>
+                    </div>
+                </div>
+                <div class="log-job-body">`;
+
+            if (!steps.length) {
+                html += `<div class="log-note" style="margin:10px 14px;">No step detail returned for this job.</div>`;
+            }
+
+            steps.forEach(s => {
+                const sc = s.conclusion || s.status || '';
+                const cls = sc === 'failure' ? 's-failure' : sc === 'skipped' ? 's-skipped'
+                    : (sc === 'in_progress' || sc === 'queued') ? 's-running' : '';
+                const ico = { success: '&#10003;', failure: '&#10007;', skipped: '&mdash;',
+                    cancelled: '&#8856;', in_progress: '&#9679;', queued: '&#9675;' }[sc] || '&#183;';
+                const sd = durBetween(s.started_at, s.completed_at);
+                html += `<div class="log-step ${cls}">
+                    <span class="log-step-num">${s.number != null ? s.number : ''}</span>
+                    <span style="flex-shrink:0;width:12px;">${ico}</span>
+                    <span class="log-step-name">${escHtml(s.name || '')}</span>
+                    <span class="log-step-dur">${sd || ''}</span>
+                </div>`;
+            });
+
+            (job.__annotations || []).forEach(a => {
+                const lvl = (a.annotation_level || 'failure').toLowerCase();
+                const loc = a.path ? `${a.path}${a.start_line ? ':' + a.start_line : ''}` : '';
+                html += `<div class="log-anno ${lvl === 'warning' ? 'warning' : lvl === 'notice' ? 'notice' : ''}">
+                    <div class="log-anno-title">${escHtml(lvl)}${loc ? ' &middot; ' + escHtml(loc) : ''}${a.title ? ' &middot; ' + escHtml(a.title) : ''}</div>
+                    <div class="log-anno-msg">${escHtml(a.message || '')}</div>
+                </div>`;
+            });
+
+            // Raw log: opt-in, because the endpoint 302-redirects to blob storage
+            // which (in my testing expectation) does not send CORS headers.
+            if (!logsState.demo && job.id) {
+                html += `<div class="log-raw-wrap">
+                    <button class="logs-mini" onclick="tryFetchJobLog('${escHtml(run.repo)}', '${escHtml(job.id)}', 'rawlog-${i}')">&#9660; try loading raw log text</button>
+                    <div id="rawlog-${i}" style="margin-top:8px;"></div>
+                </div>`;
+            }
+
+            html += `</div></div>`;
+        });
+
+        document.getElementById('logBody').innerHTML = html;
+
+        // Footer
+        const url = ghRunUrl(run);
+        const parts = [];
+        if (url) parts.push(`<a href="${url}" target="_blank" rel="noopener">Open full run on GitHub &#8599;</a>`);
+        if (url) parts.push(`<a href="${url}" target="_blank" rel="noopener">Download raw log archive (.zip) &#8599;</a>`);
+        parts.push(`<span>step timings come from the Actions API; raw stdout is served from GitHub's storage layer</span>`);
+        document.getElementById('logFoot').innerHTML = parts.join('<span style="opacity:.4">|</span>');
+    }
+
+    function durBetween(a, b) {
+        if (!a) return '';
+        const start = new Date(a).getTime();
+        const end = b ? new Date(b).getTime() : Date.now();
+        if (isNaN(start) || isNaN(end) || end < start) return '';
+        return fmtDur(Math.max(0, Math.round((end - start) / 1000)));
+    }
+
+    // ─── Raw log fetch (best-effort) ────────────────────────────────────
+    async function tryFetchJobLog(fullName, jobId, targetId) {
+        const el = document.getElementById(targetId);
+        if (!el) return;
+        el.innerHTML = '<div class="log-note"><span class="log-spin"></span>&nbsp; requesting raw log…</div>';
+        const runUrl = ghRunUrl(logsState.run);
+        try {
+            const res = await fetch(
+                `https://api.github.com/repos/${fullName}/actions/jobs/${jobId}/logs`,
+                { headers: githubHeaders() });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const text = await res.text();
+            if (!text.trim()) throw new Error('empty response');
+            renderRawLog(el, text);
+        } catch (err) {
+            el.innerHTML = `<div class="log-note warn">Raw log text could not be loaded in the browser.<br><br>
+                This endpoint redirects to GitHub's blob storage, and that storage host does not return
+                CORS headers &mdash; so the browser blocks the response for a page-based dashboard like this one.
+                The job &amp; step breakdown above comes from the JSON API and is unaffected.<br><br>
+                <b>Error:</b> ${escHtml(err.message || err)}
+                ${runUrl ? `<br><br><a href="${runUrl}" target="_blank" rel="noopener">View the raw log on GitHub &#8599;</a>` : ''}
+                </div>`;
+        }
+    }
+
+    function renderRawLog(el, text) {
+        const allLines = text.split('\n');
+        const MAX = 500;
+        const lines = allLines.length > MAX ? allLines.slice(-MAX) : allLines;
+        const body = lines.map(raw => {
+            const line = escHtml(raw);
+            let cls = '';
+            if (/##\[error\]/i.test(raw)) cls = 'l-err';
+            else if (/##\[warning\]/i.test(raw)) cls = 'l-warn';
+            else if (/##\[(group|endgroup|section)\]/i.test(raw)) cls = 'l-grp';
+            else if (/^\s*\d{4}-\d{2}-\d{2}T/.test(raw)) cls = '';
+            else if (/^\s*(\+|\$)\s/.test(raw)) cls = 'l-cmd';
+            return cls ? `<span class="${cls}">${line}</span>` : line;
+        }).join('\n');
+        el.innerHTML =
+            (allLines.length > MAX
+                ? `<div class="log-note" style="margin-bottom:6px;">showing the last ${MAX} of ${allLines.length} lines</div>`
+                : '') +
+            `<div class="log-raw">${body}</div>`;
+    }
+
+    // ─── Demo synthesis (clearly labelled, never presented as real) ─────
+    function synthesiseDemoJobs(run) {
+        let seed = 0;
+        const key = `${run.repo}|${run.wf}|${run.id}`;
+        for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) & 0x7fffffff;
+        const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+
+        const STEP_NAMES = ['Set up job', 'Checkout repository', 'Setup runtime', 'Restore cache',
+            'Install dependencies', 'Lint', 'Build', 'Run tests', 'Upload artifacts',
+            'Post job cleanup', 'Complete job'];
+        const failing = run.status === 'failed';
+        const failAt = failing ? 4 + Math.floor(rnd() * 4) : -1;
+        const start = run.startedAt || run.ts;
+        let cursor = start;
+
+        const steps = STEP_NAMES.map((name, i) => {
+            const slice = Math.max(2, Math.round((run.dur || 300) / STEP_NAMES.length * (0.4 + rnd() * 1.4)));
+            const sStart = cursor;
+            cursor += slice * 1000;
+            let conclusion = 'success';
+            if (failing && i === failAt) conclusion = 'failure';
+            else if (failing && i > failAt && i < STEP_NAMES.length - 2) conclusion = 'skipped';
+            else if (run.status === 'cancelled' && i > 5) conclusion = 'cancelled';
+            else if (run.status === 'in_progress' && i > 4) conclusion = i === 5 ? 'in_progress' : 'queued';
+            return {
+                name, number: i + 1, status: 'completed', conclusion,
+                started_at: new Date(sStart).toISOString(),
+                completed_at: conclusion === 'queued' ? null : new Date(cursor).toISOString(),
+            };
+        });
+
+        const job = {
+            id: null,
+            name: `${run.wf} / build`,
+            status: run.status === 'in_progress' ? 'in_progress' : 'completed',
+            conclusion: run.status === 'failed' ? 'failure'
+                : run.status === 'cancelled' ? 'cancelled'
+                : run.status === 'in_progress' ? 'in_progress' : 'success',
+            started_at: new Date(start).toISOString(),
+            completed_at: run.status === 'in_progress' ? null : new Date(cursor).toISOString(),
+            runner_name: 'ubuntu-latest (demo)',
+            steps,
+        };
+        if (failing) {
+            job.__annotations = [{
+                annotation_level: 'failure',
+                path: 'demo/placeholder',
+                title: 'Synthesised example',
+                message: `Placeholder failure annotation for "${STEP_NAMES[failAt]}". Real annotations are pulled from the check-run API once you connect a token.`,
+            }];
+        }
+        return [job];
+    }
+
     // ─── Init ────────────────────────────────────────────────────────────
     function init() {
         // Start in disabled/demo state
@@ -3985,5 +4460,21 @@
     // Run init after first paint so canvases have non-zero dimensions
     requestAnimationFrame(() => init());
 </script>
+
+<!-- ── Run Logs Modal ── -->
+<div class="log-modal" id="logModal" role="dialog" aria-modal="true" aria-labelledby="logTitle">
+    <div class="log-backdrop" onclick="closeLogsModal()"></div>
+    <div class="log-panel">
+        <div class="log-head">
+            <div class="log-head-row">
+                <div class="log-title" id="logTitle">run logs</div>
+                <button class="log-close" onclick="closeLogsModal()" aria-label="Close logs">&#10005;</button>
+            </div>
+            <div class="log-meta" id="logMeta"></div>
+        </div>
+        <div class="log-body" id="logBody"></div>
+        <div class="log-foot" id="logFoot"></div>
+    </div>
+</div>
 </body>
 </html>
