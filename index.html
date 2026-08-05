@@ -1276,6 +1276,25 @@
         @keyframes logSpin { to { transform: rotate(360deg); } }
 
         @media (max-width: 640px) { .log-panel { width: 100vw; } }
+
+        /* ─── Run Logs tab (last run per repo) ─── */
+        .rlog-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+        .rlog-prog { font-family: var(--mono); font-size: 10.5px; color: var(--text3); }
+        .rlog-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg2); margin-bottom: 10px; overflow: hidden; }
+        .rlog-card.st-failed { border-color: rgba(240,82,82,0.28); }
+        .rlog-card.st-in_progress { border-color: rgba(91,141,238,0.28); }
+        .rlog-head { display: flex; align-items: center; gap: 12px; padding: 13px 15px; cursor: pointer; }
+        .rlog-head:hover { background: var(--bg3); }
+        .rlog-avatar { width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; flex-shrink: 0; }
+        .rlog-main { flex: 1; min-width: 0; }
+        .rlog-repo { font-family: var(--mono); font-size: 12.5px; color: var(--text); word-break: break-all; }
+        .rlog-sub { font-family: var(--mono); font-size: 10.5px; color: var(--text3); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 9px; }
+        .rlog-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .rlog-pill { font-family: var(--mono); font-size: 10px; padding: 2px 9px; border-radius: 99px; }
+        .rlog-body { display: none; border-top: 1px solid var(--border); padding: 12px 15px 14px; background: var(--bg); }
+        .rlog-card.open .rlog-body { display: block; }
+        .rlog-card.open .log-caret { transform: rotate(90deg); }
+        .rlog-empty { font-family: var(--mono); font-size: 12px; color: var(--text3); text-align: center; padding: 40px 0; }
     </style>
 </head>
 <body>
@@ -1322,6 +1341,11 @@
                     <span class="nav-count" id="nav-fail-count" style="background:var(--red-dim);color:var(--red);">—</span>
                 </div>
 
+                <div class="nav-item" onclick="switchTab('logs', this)" id="nav-logs">
+                    <span class="nav-dot" style="background:var(--purple);"></span>
+                    Run Logs
+                    <span class="nav-count" id="nav-logs-count" style="background:var(--purple-dim);color:var(--purple);">&mdash;</span>
+                </div>
                 <div class="nav-item" onclick="switchTab('timeline', this)" id="nav-timeline">
                     <span class="nav-dot" style="background:var(--purple);"></span>
                     Timeline
@@ -1378,17 +1402,6 @@
                         <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
                     </svg>
                     Refresh
-                </button>
-                <button class="logs-btn" id="lastLogsBtn" onclick="openLastRunLogs()"
-                    title="Open the job & step log for the most recent run in the current filter">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="8" y1="13" x2="16" y2="13" />
-                        <line x1="8" y1="17" x2="13" y2="17" />
-                    </svg>
-                    Last run logs
                 </button>
                 <select class="ctrl-select" id="repoFilter" onchange="onRepoFilterChange()" disabled>
                     <option value="all">All repos</option>
@@ -1788,6 +1801,37 @@
             </div>
 
         </div><!-- /tab-timeline -->
+
+        <!-- ── Run Logs Tab ── -->
+        <div class="tab-panel" id="tab-logs">
+            <div class="card section fade-in">
+                <div class="section-head">
+                    <div>
+                        <div class="section-title">Last run &middot; every repository</div>
+                        <div class="section-sub">Job &amp; step breakdown for the most recent workflow run in each repo</div>
+                    </div>
+                    <div class="rlog-bar" style="margin-bottom:0;">
+                        <select class="ctrl-select" id="logsRunPick" onchange="renderLogsTab()" style="font-size:11px;">
+                            <option value="latest">latest run</option>
+                            <option value="completed">latest completed run</option>
+                        </select>
+                        <select class="ctrl-select" id="logsScopeFilter" onchange="renderLogsTab()" style="font-size:11px;">
+                            <option value="all">all repos</option>
+                            <option value="failed">failed only</option>
+                            <option value="attention">failed or running</option>
+                        </select>
+                        <button class="logs-btn" onclick="reloadAllRepoLogs()" title="Clear cache and re-fetch every repo">
+                            &#8635; reload all
+                        </button>
+                    </div>
+                </div>
+                <div class="rlog-bar">
+                    <span class="rlog-prog" id="logsProgress"></span>
+                </div>
+                <div id="logsRepoList"></div>
+                <div class="rlog-empty" id="logsEmpty" style="display:none;">no repositories match this filter</div>
+            </div>
+        </div><!-- /tab-logs -->
 
 </div><!-- /content -->
 </main>
@@ -2940,7 +2984,7 @@
     // ─── Tab switching ───────────────────────────────────────────────────
     let activeTab = 'overview';
     const tabTitles = { overview: 'overview', repos: 'repositories', runs: 'all runs', failures: 'failure analysis',
-        timeline: 'timeline & runtimes', live: 'live now' };
+        timeline: 'timeline & runtimes', live: 'live now', logs: 'run logs' };
 
     function switchTab(tab, el) {
         if (!appState.isLive && tab !== 'overview') {
@@ -2974,6 +3018,7 @@
         else if (activeTab === 'failures') renderFailures(data);
         else if (activeTab === 'timeline') renderTimeline();
         else if (activeTab === 'live') renderLiveTab();
+        else if (activeTab === 'logs') renderLogsTab();
         // Always update live badge count
         updateLiveBadge();
     }
@@ -4055,6 +4100,8 @@
         // Reset nav counts
         document.getElementById('nav-fail-count').textContent = '—';
         document.getElementById('nav-repo-count').textContent = '—';
+        document.getElementById('nav-logs-count').textContent = '—';
+        repoLogCache.clear();
         document.getElementById('sidebar-repo-list').innerHTML = '';
 
         // Switch to overview
@@ -4223,7 +4270,7 @@
         const bits = [
             `<span><b>repo</b> ${escHtml(run.repo)}</span>`,
             `<span><b>branch</b> ${escHtml(run.branch || '—')}</span>`,
-            `<span><b>duration</b> ${fmtDur(run.dur || 0)}</span>`,
+            `<span><b>${run.status === 'in_progress' ? 'elapsed' : 'duration'}</b> ${fmtDur(runElapsed(run))}</span>`,
             `<span><b>queued</b> ${run.queue != null ? run.queue + 's' : '—'}</span>`,
             `<span><b>started</b> ${new Date(run.startedAt || run.ts).toLocaleString()}</span>`,
         ];
@@ -4245,6 +4292,20 @@
         if (logsState.demo) {
             html += `<div class="log-banner demo">Demo data &mdash; these steps are synthesised placeholders, not real GitHub logs. Connect a token in the sidebar to load the actual job &amp; step breakdown.</div>`;
         }
+        html += buildJobsHtml(run, jobs, logsState.demo, 'modal');
+        document.getElementById('logBody').innerHTML = html;
+
+        const url = ghRunUrl(run);
+        const parts = [];
+        if (url) parts.push(`<a href="${url}" target="_blank" rel="noopener">Open full run on GitHub &#8599;</a>`);
+        if (url) parts.push(`<a href="${url}" target="_blank" rel="noopener">Download raw log archive (.zip) &#8599;</a>`);
+        parts.push(`<span>step timings come from the Actions API; raw stdout is served from GitHub's storage layer</span>`);
+        document.getElementById('logFoot').innerHTML = parts.join('<span style="opacity:.4">|</span>');
+    }
+
+    // Shared renderer: used by both the slide-over modal and the Run Logs tab.
+    function buildJobsHtml(run, jobs, isDemo, idPrefix) {
+        let html = '';
 
         if (!jobs.length) {
             html += `<div class="log-note">GitHub returned no jobs for this run. That usually means the run was skipped, was deleted, or its logs have aged out of the retention window (90 days on public repos by default &mdash; <b>please verify against your own org settings</b>).</div>`;
@@ -4258,9 +4319,10 @@
             const failedSteps = steps.filter(s => s.conclusion === 'failure').length;
             const jobDur = durBetween(job.started_at, job.completed_at);
             const openByDefault = conc === 'failure' || conc === 'in_progress' || jobs.length === 1;
+            const jid = `logjob-${idPrefix}-${i}`;
 
-            html += `<div class="log-job${openByDefault ? ' open' : ''}" id="logjob-${i}">
-                <div class="log-job-head" onclick="document.getElementById('logjob-${i}').classList.toggle('open')">
+            html += `<div class="log-job${openByDefault ? ' open' : ''}" id="${jid}">
+                <div class="log-job-head" onclick="document.getElementById('${jid}').classList.toggle('open')">
                     <span class="log-caret">&#9654;</span>
                     <span style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0;"></span>
                     <div style="flex:1;min-width:0;">
@@ -4299,26 +4361,29 @@
             });
 
             // Raw log: opt-in, because the endpoint 302-redirects to blob storage
-            // which (in my testing expectation) does not send CORS headers.
-            if (!logsState.demo && job.id) {
+            // which does not send CORS headers.
+            if (!isDemo && job.id) {
+                const rid = `rawlog-${idPrefix}-${i}`;
                 html += `<div class="log-raw-wrap">
-                    <button class="logs-mini" onclick="tryFetchJobLog('${escHtml(run.repo)}', '${escHtml(job.id)}', 'rawlog-${i}')">&#9660; try loading raw log text</button>
-                    <div id="rawlog-${i}" style="margin-top:8px;"></div>
+                    <button class="logs-mini" onclick="tryFetchJobLog('${escHtml(run.repo)}', '${escHtml(job.id)}', '${rid}')">&#9660; try loading raw log text</button>
+                    <div id="${rid}" style="margin-top:8px;"></div>
                 </div>`;
             }
 
             html += `</div></div>`;
         });
 
-        document.getElementById('logBody').innerHTML = html;
+        return html;
+    }
 
-        // Footer
-        const url = ghRunUrl(run);
-        const parts = [];
-        if (url) parts.push(`<a href="${url}" target="_blank" rel="noopener">Open full run on GitHub &#8599;</a>`);
-        if (url) parts.push(`<a href="${url}" target="_blank" rel="noopener">Download raw log archive (.zip) &#8599;</a>`);
-        parts.push(`<span>step timings come from the Actions API; raw stdout is served from GitHub's storage layer</span>`);
-        document.getElementById('logFoot').innerHTML = parts.join('<span style="opacity:.4">|</span>');
+    // Completed runs carry .dur; demo in-progress seeds carry .elapsed; live
+    // in-progress runs need it derived from startedAt.
+    function runElapsed(r) {
+        if (r.status === 'in_progress') {
+            if (r.elapsed != null) return r.elapsed;
+            return Math.max(0, Math.round((Date.now() - (r.startedAt || r.ts)) / 1000));
+        }
+        return r.dur || 0;
     }
 
     function durBetween(a, b) {
@@ -4429,6 +4494,265 @@
         return [job];
     }
 
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  RUN LOGS TAB — last run of every repository, side by side
+    // ═══════════════════════════════════════════════════════════════════
+
+    const repoLogCache = new Map();   // runKey -> { status, jobs, demo, error }
+    let logsTabRows = [];
+
+    // Newest run per repo, across both the history cache and in-progress runs.
+    function getLastRunPerRepo() {
+        const repoDefs = getRepoDefs();
+        const pick = document.getElementById('logsRunPick')?.value || 'latest';
+        let pool = [...getLiveRuns(), ...(appState.isLive ? appState.liveRuns : ALL_RUNS)];
+        // "latest completed" skips anything still running, so you see a finished log.
+        if (pick === 'completed') pool = pool.filter(r => r.status !== 'in_progress');
+        const best = new Map();
+        pool.forEach(r => {
+            const cur = best.get(r.repo);
+            if (!cur || (r.startedAt || r.ts) > (cur.startedAt || cur.ts)) best.set(r.repo, r);
+        });
+        const rows = Object.keys(repoDefs).map(k => ({ repo: k, run: best.get(k) || null }));
+        const known = new Set(Object.keys(repoDefs));
+        best.forEach((run, k) => { if (!known.has(k)) rows.push({ repo: k, run }); });
+        rows.sort((a, b) => {
+            if (!a.run && !b.run) return a.repo.localeCompare(b.repo);
+            if (!a.run) return 1;
+            if (!b.run) return -1;
+            return (b.run.startedAt || b.run.ts) - (a.run.startedAt || a.run.ts);
+        });
+        return rows;
+    }
+
+    function renderLogsTab(autoLoad = true) {
+        const all = getLastRunPerRepo();
+        const scope = document.getElementById('logsScopeFilter')?.value || 'all';
+        const rows = scope === 'failed'
+            ? all.filter(r => r.run && r.run.status === 'failed')
+            : scope === 'attention'
+                ? all.filter(r => r.run && (r.run.status === 'failed' || r.run.status === 'in_progress'))
+                : all;
+
+        logsTabRows = rows;
+        const countEl = document.getElementById('nav-logs-count');
+        if (countEl) countEl.textContent = all.length || '—';
+
+        const listEl = document.getElementById('logsRepoList');
+        const emptyEl = document.getElementById('logsEmpty');
+        if (!listEl) return;
+
+        if (!rows.length) {
+            listEl.innerHTML = '';
+            if (emptyEl) emptyEl.style.display = 'block';
+            updateLogsProgress();
+            return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        const repoDefs = getRepoDefs();
+        const stCol = { success: 'var(--green)', failed: 'var(--red)', cancelled: 'var(--amber)',
+            skipped: 'var(--text3)', in_progress: 'var(--blue)' };
+        const stBg = { success: 'var(--green-dim)', failed: 'var(--red-dim)', cancelled: 'var(--amber-dim)',
+            skipped: 'rgba(85,91,106,0.12)', in_progress: 'var(--blue-dim)' };
+
+        listEl.innerHTML = rows.map((row, i) => {
+            const rd = repoDefs[row.repo] || { fgCol: 'var(--text2)', bgCol: 'var(--bg4)', label: '??' };
+            const r = row.run;
+            if (!r) {
+                return `<div class="rlog-card" id="rlog-${i}">
+                    <div class="rlog-head" style="cursor:default;">
+                        <div class="rlog-avatar" style="background:${rd.bgCol};color:${rd.fgCol};">${escHtml(rd.label)}</div>
+                        <div class="rlog-main">
+                            <div class="rlog-repo">${escHtml(row.repo)}</div>
+                            <div class="rlog-sub"><span>no runs in the selected time range</span></div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            const col = stCol[r.status] || 'var(--text3)';
+            const bg = stBg[r.status] || 'rgba(85,91,106,0.12)';
+            return `<div class="rlog-card st-${escHtml(r.status)}" id="rlog-${i}">
+                <div class="rlog-head" onclick="toggleRepoLog(${i})">
+                    <span class="log-caret">&#9654;</span>
+                    <div class="rlog-avatar" style="background:${rd.bgCol};color:${rd.fgCol};">${escHtml(rd.label)}</div>
+                    <div class="rlog-main">
+                        <div class="rlog-repo">${escHtml(row.repo)}</div>
+                        <div class="rlog-sub">
+                            <span style="color:var(--text2);">${escHtml(r.wf)}</span>
+                            <span>${escHtml(r.branch || '—')}</span>
+                            <span>${fmtDur(runElapsed(r))}${r.status === 'in_progress' ? ' elapsed' : ''}</span>
+                            <span>${timeAgo(r.startedAt || r.ts)}</span>
+                            ${isRealRunId(r.id) ? `<span>#${escHtml(r.id)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="rlog-right">
+                        <span class="rlog-pill" style="background:${bg};color:${col};">${escHtml(r.status)}</span>
+                    </div>
+                </div>
+                <div class="rlog-body" id="rlogbody-${i}"></div>
+            </div>`;
+        }).join('');
+
+        // Restore expansion + painted content for anything already fetched
+        rows.forEach((row, i) => {
+            if (!row.run) return;
+            const st = repoLogCache.get(runKey(row.run));
+            if (st) {
+                const card = document.getElementById(`rlog-${i}`);
+                if (card && st.expanded !== false) card.classList.add('open');
+                renderRepoLogBody(i);
+            }
+        });
+
+        updateLogsProgress();
+        if (autoLoad) autoLoadRepoLogs();
+    }
+
+    function toggleRepoLog(i) {
+        const card = document.getElementById(`rlog-${i}`);
+        if (!card) return;
+        card.classList.toggle('open');
+        const row = logsTabRows[i];
+        if (row && row.run) {
+            const st = repoLogCache.get(runKey(row.run));
+            if (st) st.expanded = card.classList.contains('open');
+            if (card.classList.contains('open')) loadRepoLog(i);
+        }
+    }
+
+    function renderRepoLogBody(i) {
+        const el = document.getElementById(`rlogbody-${i}`);
+        const row = logsTabRows[i];
+        if (!el || !row || !row.run) return;
+        const run = row.run;
+        const st = repoLogCache.get(runKey(run));
+        const url = ghRunUrl(run);
+
+        if (!st || st.status === 'idle') {
+            el.innerHTML = `<div class="log-note">not loaded yet</div>`;
+            return;
+        }
+        if (st.status === 'loading') {
+            el.innerHTML = `<div class="log-note"><span class="log-spin"></span>&nbsp; fetching job breakdown…</div>`;
+            return;
+        }
+        if (st.status === 'error') {
+            el.innerHTML = `<div class="log-banner err">${escHtml(st.error)}</div>
+                <div class="log-note">Common causes: the token lacks <b>actions:read</b> on this repo, the run was deleted, or the logs are past retention.
+                ${url ? `<br><br><a href="${url}" target="_blank" rel="noopener">Open this run on GitHub &#8599;</a>` : ''}</div>`;
+            return;
+        }
+
+        let html = '';
+        if (st.demo) {
+            html += `<div class="log-banner demo">Demo data &mdash; synthesised placeholder steps, not real GitHub logs.</div>`;
+        }
+        html += buildJobsHtml(run, st.jobs || [], st.demo, `tab${i}`);
+        if (url) {
+            html += `<div style="margin-top:6px;font-family:var(--mono);font-size:10px;">
+                <a href="${url}" target="_blank" rel="noopener" style="color:var(--blue);">Open full run on GitHub &#8599;</a></div>`;
+        }
+        el.innerHTML = html;
+    }
+
+    async function loadRepoLog(i, force = false) {
+        const row = logsTabRows[i];
+        if (!row || !row.run) return;
+        const run = row.run;
+        const key = runKey(run);
+        let st = repoLogCache.get(key);
+        if (st && !force && (st.status === 'loading' || st.status === 'done')) {
+            renderRepoLogBody(i);
+            return;
+        }
+        st = { status: 'loading', expanded: true };
+        repoLogCache.set(key, st);
+        renderRepoLogBody(i);
+        updateLogsProgress();
+
+        try {
+            if (!canFetchRealLogs(run)) {
+                st.jobs = synthesiseDemoJobs(run);
+                st.demo = true;
+                st.status = 'done';
+            } else {
+                const jobs = await fetchRunJobs(run.repo, run.id);
+                st.jobs = jobs;
+                st.status = 'done';
+                renderRepoLogBody(i);
+                await attachAnnotations(run.repo, jobs);
+            }
+        } catch (err) {
+            st.status = 'error';
+            st.error = `Could not load jobs: ${err.message || err}`;
+        }
+        renderRepoLogBody(i);
+        updateLogsProgress();
+    }
+
+    // Bounded concurrency so a 30-repo org doesn't fire 30 parallel calls.
+    let logsLoadRunning = false;
+    async function autoLoadRepoLogs() {
+        if (logsLoadRunning) return;
+        const pending = logsTabRows
+            .map((row, i) => ({ row, i }))
+            .filter(({ row }) => row.run)
+            .filter(({ row }) => {
+                const st = repoLogCache.get(runKey(row.run));
+                return !st || st.status === 'idle';
+            })
+            .map(({ i }) => i);
+        if (!pending.length) { updateLogsProgress(); return; }
+
+        logsLoadRunning = true;
+        // expand the cards we're about to fill
+        pending.forEach(i => document.getElementById(`rlog-${i}`)?.classList.add('open'));
+
+        const CONCURRENCY = 4;
+        let cursor = 0;
+        const worker = async () => {
+            while (cursor < pending.length) {
+                const i = pending[cursor++];
+                await loadRepoLog(i);
+            }
+        };
+        try {
+            await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
+        } finally {
+            logsLoadRunning = false;
+            updateLogsProgress();
+        }
+    }
+
+    function reloadAllRepoLogs() {
+        repoLogCache.clear();
+        renderLogsTab(true);
+    }
+
+    function updateLogsProgress() {
+        const el = document.getElementById('logsProgress');
+        if (!el) return;
+        const withRuns = logsTabRows.filter(r => r.run);
+        if (!withRuns.length) { el.textContent = ''; return; }
+        let done = 0, loading = 0, failed = 0, errored = 0;
+        withRuns.forEach(r => {
+            const st = repoLogCache.get(runKey(r.run));
+            if (!st) return;
+            if (st.status === 'loading') loading++;
+            else if (st.status === 'error') { errored++; done++; }
+            else if (st.status === 'done') done++;
+            if (r.run.status === 'failed') failed++;
+        });
+        const bits = [`${done}/${withRuns.length} repos loaded`];
+        if (loading) bits.push(`<span class="log-spin"></span> ${loading} in flight`);
+        if (failed) bits.push(`<span style="color:var(--red)">${failed} last run failed</span>`);
+        if (errored) bits.push(`<span style="color:var(--amber)">${errored} could not be fetched</span>`);
+        if (!appState.isLive) bits.push('demo data');
+        el.innerHTML = bits.join(' &middot; ');
+    }
+
     // ─── Init ────────────────────────────────────────────────────────────
     function init() {
         // Start in disabled/demo state
@@ -4449,6 +4773,8 @@
         document.getElementById('connectStatus').textContent = '';
         document.getElementById('nav-fail-count').textContent = '—';
         document.getElementById('nav-repo-count').textContent = '—';
+        document.getElementById('nav-logs-count').textContent = '—';
+        repoLogCache.clear();
         document.getElementById('sidebar-repo-list').innerHTML = '';
 
         // Generate fresh demo data and render
