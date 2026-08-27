@@ -150,17 +150,28 @@ export async function syncAll(client, { owner, days = 30, pages = 2, onProgress 
   const since = Date.now() - days * 86400000;
   let done = 0;
   const total = candidates.length;
-  const skipped = [];
+
+  // Three outcomes, and they are not the same thing. The previous version
+  // folded all of them into "return []", so a token that could no longer read
+  // Actions reported every repository as simply having no runs — and the caller
+  // cheerfully replaced good data with nothing, silently.
+  const ok = [];
+  const failed = [];
+  const withoutActions = [];
 
   const settle = await Promise.all(
     candidates.map(async (repo) => {
       try {
         const runs = await fetchRunsForRepo(client, repo.fullName, { pages, since });
+        ok.push(repo.fullName);
         return runs;
       } catch (err) {
-        // A repo without Actions enabled 404s; that is normal, not an error.
-        if (!(err instanceof GitHubError) || (err.status !== 404 && err.status !== 403)) {
-          skipped.push({ repo: repo.fullName, reason: err.message });
+        // 404 genuinely means "this repository has no Actions", which is a
+        // legitimate zero. Anything else is a failure to read, not an absence.
+        if (err instanceof GitHubError && err.status === 404) {
+          withoutActions.push(repo.fullName);
+        } else {
+          failed.push({ repo: repo.fullName, reason: err.message, status: err.status || 0 });
         }
         return [];
       } finally {
@@ -172,7 +183,18 @@ export async function syncAll(client, { owner, days = 30, pages = 2, onProgress 
 
   const runs = dedupeRuns(settle.flat());
   computeFlaky(runs);
-  return { repos, runs, skipped };
+
+  return {
+    repos,
+    runs,
+    ok,
+    failed,
+    withoutActions,
+    /** True when nothing could be read at all — the result is not trustworthy. */
+    total: candidates.length,
+    complete: failed.length === 0,
+    usable: ok.length > 0 || failed.length === 0,
+  };
 }
 
 /**

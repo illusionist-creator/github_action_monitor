@@ -76,6 +76,13 @@ waste them:
 - **Real backoff.** `Retry-After` is honoured on secondary limits; 5xx retries
   use exponential backoff with full jitter so parallel requests do not
   resynchronise into a thundering herd.
+- **Deadlines.** Every request has a 15-second timeout and a whole sync has 90,
+  because `fetch()` has no timeout of its own and a stalled connection would
+  otherwise leave the UI waiting forever.
+- **A failed refresh never destroys good data.** If a sync cannot read anything,
+  the dashboard keeps what it was showing and says what went wrong; a partial
+  failure applies what it got and names the repositories it could not read. A
+  403 is a failure to read, not a repository with no runs.
 
 ## Development
 
@@ -93,7 +100,7 @@ src/js/views/           overview, live, repos, runs, failures, timeline, logs
 ```bash
 npm install       # jsdom, for the DOM smoke tests — nothing ships to the browser
 npm run build     # src/ -> index.html
-npm test          # 83 tests: units, security, build, and a real-DOM smoke suite
+npm test          # 92 tests: units, security, build, and a real-DOM smoke suite
 npm run check     # fail if index.html has drifted from src/
 ```
 

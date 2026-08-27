@@ -99,6 +99,13 @@ export class TaskQueue {
     });
   }
 
+  /** Reject everything not yet started. Work already in flight is aborted by signal. */
+  cancelPending(reason) {
+    const waiting = this.pending;
+    this.pending = [];
+    waiting.forEach(({ reject }) => reject(reason));
+  }
+
   drain() {
     while (this.active < this.limit && this.pending.length) {
       const { task, resolve, reject } = this.pending.shift();
@@ -117,6 +124,38 @@ export class TaskQueue {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * A signal that aborts when the parent aborts OR when the deadline passes.
+ *
+ * fetch() has no timeout of its own: a stalled connection — a dropped network, a
+ * proxy that accepts and never answers — leaves the promise pending forever. The
+ * UI awaiting it then waits forever too, which is how a Refresh could leave its
+ * button disabled with no error and no way back.
+ */
+function deadlineSignal(parent, timeoutMs) {
+  const controller = new AbortController();
+  const fromParent = () => controller.abort(parent.reason);
+  if (parent.aborted) controller.abort(parent.reason);
+  else parent.addEventListener('abort', fromParent, { once: true });
+
+  const timer = setTimeout(() => {
+    const err = new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+    err.name = 'TimeoutError';
+    controller.abort(err);
+  }, timeoutMs);
+
+  return {
+    signal: controller.signal,
+    get timedOut() {
+      return Boolean(controller.signal.reason && controller.signal.reason.name === 'TimeoutError');
+    },
+    dispose() {
+      clearTimeout(timer);
+      parent.removeEventListener('abort', fromParent);
+    },
+  };
+}
+
 export class GitHubClient {
   /**
    * @param {object}   options
@@ -125,6 +164,7 @@ export class GitHubClient {
    * @param {number}   [options.concurrency]   simultaneous in-flight requests
    * @param {number}   [options.maxRetries]
    * @param {number}   [options.reserve]       stop polling below this many calls
+   * @param {number}   [options.timeout]       per-request deadline, milliseconds
    * @param {Function} [options.fetchImpl]     injected for tests
    * @param {Function} [options.onRateLimit]   called with the live budget
    */
@@ -134,18 +174,20 @@ export class GitHubClient {
     concurrency = 6,
     maxRetries = 3,
     reserve = 100,
+    timeout = 15000,
     fetchImpl,
     onRateLimit,
   } = {}) {
     this.baseUrl = String(baseUrl).replace(/\/+$/, '');
     this.maxRetries = maxRetries;
     this.reserve = reserve;
+    this.timeout = timeout;
     this.queue = new TaskQueue(concurrency);
     this.cache = new Map();
     this.inflight = new Map();
     this.onRateLimit = onRateLimit || (() => {});
     this.rateLimit = { limit: null, remaining: null, resetAt: null, revalidated: 0 };
-    this.controller = null;
+    this.controller = new AbortController();
     // Non-enumerable so the credential never lands in console.log or JSON.stringify.
     Object.defineProperty(this, 'token', {
       value: String(token),
@@ -168,17 +210,24 @@ export class GitHubClient {
     this.cache.clear();
   }
 
-  /** Abort everything in flight — used when the user switches scope or disconnects. */
+  /**
+   * Cancel everything: in flight, and queued but not yet started.
+   *
+   * The controller used to be created lazily by the first request, so aborting
+   * before one had started did nothing at all — and queued work that began
+   * afterwards simply made itself a fresh controller and carried on. Both meant
+   * a cancelled sync kept running in the background.
+   */
   abortAll() {
-    if (this.controller) this.controller.abort();
-    this.controller = null;
+    const reason = new Error('Request cancelled');
+    reason.name = 'AbortError';
+    this.controller.abort(reason);
+    this.controller = new AbortController();
     this.inflight.clear();
+    this.queue.cancelPending(reason);
   }
 
   signal() {
-    if (!this.controller || this.controller.signal.aborted) {
-      this.controller = new AbortController();
-    }
     return this.controller.signal;
   }
 
@@ -242,33 +291,54 @@ export class GitHubClient {
     const existing = this.inflight.get(url);
     if (existing) return existing;
 
+    // Capture the signal NOW, not when the queued task finally runs. A cancel
+    // that lands in between would otherwise be missed: the task would ask for
+    // the signal after abortAll() had already installed a fresh controller, and
+    // carry on as though nothing had happened.
+    const signal = this.signal();
     const work = this.queue
-      .run(() => this.fetchWithRetry(url, { revalidate }))
+      .run(() => this.fetchWithRetry(url, { revalidate, signal }))
       .finally(() => this.inflight.delete(url));
     this.inflight.set(url, work);
     return work;
   }
 
-  async fetchWithRetry(url, { revalidate }) {
+  async fetchWithRetry(url, { revalidate, signal = this.signal() }) {
     const cached = this.cache.get(url);
+    // A timeout has already cost the full deadline, so it gets one retry, not
+    // the full budget: four 15-second attempts would leave the UI waiting a
+    // minute with the refresh button disabled and nothing on screen to explain it.
+    let timeouts = 0;
     for (let attempt = 0; ; attempt += 1) {
       const headers = this.buildHeaders(
         revalidate && cached && cached.etag ? { 'If-None-Match': cached.etag } : undefined,
       );
 
       let response;
+      const deadline = deadlineSignal(signal, this.timeout);
       try {
-        response = await this.fetchImpl(url, { headers, signal: this.signal() });
+        // Do not issue a request that is already cancelled; a fetch given an
+        // aborted signal may never fire an abort event to reject on.
+        if (deadline.signal.aborted) throw deadline.signal.reason;
+        response = await this.fetchImpl(url, { headers, signal: deadline.signal });
       } catch (err) {
-        if (err && err.name === 'AbortError') throw err;
-        if (attempt < this.maxRetries) {
+        const timedOut = deadline.timedOut;
+        // A genuine cancellation (disconnect, scope change) must propagate; a
+        // timeout is just a failed attempt and is worth one retry.
+        if (!timedOut && err && (err.name === 'AbortError' || err.name === 'TimeoutError')) throw err;
+        if (timedOut) timeouts += 1;
+        if (attempt < this.maxRetries && timeouts <= 1) {
           await sleep(Math.round(500 * 2 ** attempt * (0.5 + Math.random() / 2)));
           continue;
         }
         throw new GitHubError(
-          'Network request failed. Check your connection, or whether a proxy is blocking api.github.com.',
-          { url, kind: 'network' },
+          timedOut
+            ? `Request timed out after ${Math.round(this.timeout / 1000)}s. The network or a proxy may be stalling.`
+            : 'Network request failed. Check your connection, or whether a proxy is blocking api.github.com.',
+          { url, kind: timedOut ? 'timeout' : 'network' },
         );
+      } finally {
+        deadline.dispose();
       }
 
       const verdict = classifyResponse({
