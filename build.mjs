@@ -25,6 +25,18 @@ const ENTRY = join(JS_ROOT, 'app.js');
 const TEMPLATE = join(SRC, 'index.html');
 const OUTPUT = join(ROOT, 'index.html');
 
+/**
+ * Read a source file with line endings normalised.
+ *
+ * Without this, a Windows checkout (git's autocrlf gives CRLF) and CI's Linux
+ * checkout (LF) produce byte-different bundles and different build stamps, so
+ * `--check` fails on one platform or the other no matter which is correct.
+ * Normalising here makes index.html reproducible everywhere.
+ */
+async function read(path) {
+  return (await readFile(path, 'utf8')).replace(/\r\n/g, '\n');
+}
+
 const IMPORT_RE = /^import\s*\{([^}]+)\}\s*from\s*'([^']+)';?\s*$/;
 const BARE_IMPORT_RE = /^import\s+'([^']+)';?\s*$/;
 const EXPORT_DECL_RE = /^export\s+(async\s+function|function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)/;
@@ -153,7 +165,7 @@ async function buildJs() {
   const files = (await collectJs(JS_ROOT)).sort();
   const modules = [];
   for (const file of files) {
-    modules.push(transform(await readFile(file, 'utf8'), file));
+    modules.push(transform(await read(file), file));
   }
   return [
     "'use strict';",
@@ -173,13 +185,13 @@ async function buildCss() {
   if (missing.length) throw new Error(`Add ${missing.join(', ')} to the CSS order in build.mjs`);
   const chunks = [];
   for (const name of order) {
-    chunks.push(`/* ---- ${name} ---- */\n${await readFile(join(dir, name), 'utf8')}`);
+    chunks.push(`/* ---- ${name} ---- */\n${await read(join(dir, name))}`);
   }
   return chunks.join('\n');
 }
 
 async function build() {
-  const template = await readFile(TEMPLATE, 'utf8');
+  const template = await read(TEMPLATE);
   const css = await buildCss();
   const js = await buildJs();
 
@@ -203,7 +215,7 @@ const output = await build();
 if (check) {
   let current = '';
   try {
-    current = await readFile(OUTPUT, 'utf8');
+    current = await read(OUTPUT);
   } catch {
     /* not built yet */
   }

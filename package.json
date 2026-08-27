@@ -18,10 +18,10 @@
     "verify": "node --run check && node --run test"
   },
   "devDependencies": {
-    "jsdom": "^27.0.0"
+    "jsdom": "^29.1.1"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
   },
   "keywords": [
     "github-actions",

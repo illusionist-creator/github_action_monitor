@@ -25,13 +25,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
 
-      - run: npm ci
-
-      # Build fresh rather than trusting the committed artifact.
-      - run: node build.mjs
+      # build.mjs has no dependencies, so this job needs no install step —
+      # it cannot be broken by a devDependency that only the tests use.
+      - name: Build fresh rather than trusting the committed artifact
+        run: node build.mjs
 
       - name: Stage the single file
         run: |
