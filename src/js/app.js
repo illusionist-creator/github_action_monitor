@@ -656,10 +656,27 @@ function wire() {
       console.warn('[app] opaque cross-origin error suppressed', event);
       return;
     }
+    // Name the source. "Unexpected error: this._fn is not a function" is not
+    // something a reader can act on, or report usefully; knowing it came from
+    // the charting library rather than this page is the difference between a
+    // dead end and a diagnosis.
+    const file = String(event.filename || '').split('/').pop();
+    const fromChart = /^chart[.-]/i.test(file);
+    if (fromChart) {
+      console.warn('[charts] error inside Chart.js', event.message, event.error);
+      toast({
+        kind: 'warn',
+        title: 'A chart failed to draw',
+        body: `${event.message} — the underlying data is unaffected. Reload if a chart looks stuck.`,
+        timeout: 12_000,
+        dedupe: 'chartjs',
+      });
+      return;
+    }
     toast({
       kind: 'error',
       title: 'Unexpected error',
-      body: String(event.message || 'Something failed while rendering.'),
+      body: `${event.message || 'Something failed while rendering.'}${file ? ` (${file}:${event.lineno || 0})` : ''}`,
       timeout: 10_000,
       dedupe: `err:${event.message}`,
     });

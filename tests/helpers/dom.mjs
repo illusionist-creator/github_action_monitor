@@ -88,7 +88,9 @@ function installShims(window, { withChart }) {
       color: '',
       borderColor: '',
       font: {},
-      animation: null,
+      // Mirror the real shape: Chart.js always has an animation descriptor
+      // object here, and code that tunes one key must not have to replace it.
+      animation: { duration: 1000, easing: 'easeOutQuart' },
       plugins: { tooltip: {}, legend: {} },
     };
     window.__charts = created;

@@ -33,7 +33,14 @@ export function initChartDefaults() {
   Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
   Chart.defaults.font.family = "'JetBrains Mono', ui-monospace, monospace";
   Chart.defaults.font.size = 11;
-  Chart.defaults.animation = reduceMotion() ? false : { duration: 400 };
+  // Set the duration on the existing descriptor rather than replacing it.
+  // `Chart.defaults.animation = {duration}` drops the keys Chart.js resolves
+  // per animated property (type, fn, from, to, easing), and a property left
+  // without a type falls back to `typeof value` — for which Chart.js has no
+  // interpolator beyond boolean/color/number, and throws
+  // "this._fn is not a function" from inside its animation loop.
+  if (reduceMotion()) Chart.defaults.animation = false;
+  else if (Chart.defaults.animation) Chart.defaults.animation.duration = 400;
   Chart.defaults.plugins.tooltip.backgroundColor = '#1a1e25';
   Chart.defaults.plugins.tooltip.borderColor = 'rgba(255,255,255,0.12)';
   Chart.defaults.plugins.tooltip.borderWidth = 1;

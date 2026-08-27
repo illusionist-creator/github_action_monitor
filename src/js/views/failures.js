@@ -1,7 +1,7 @@
 import { FAILURE_CATEGORY_LABELS, categorizeFailure } from '../data/analytics.js';
 import { html, setHtml, setText } from '../lib/dom.js';
 import { fmtDuration, fmtNumber, timeAgo, truncate } from '../lib/format.js';
-import { STATUS_COLORS, entityColor } from '../lib/palette.js';
+import { STATUS_COLORS, SURFACE, entityColor } from '../lib/palette.js';
 import { axis, chart, legend } from '../ui/charts.js';
 import { emptyState } from '../ui/components.js';
 
@@ -66,7 +66,7 @@ function renderFlaky(failures) {
         datasets: [{
           data: [sticky, flaky],
           backgroundColor: [STATUS_COLORS.failed, '#fab219'],
-          borderColor: '#13161b',
+          borderColor: SURFACE,
           borderWidth: 2,
         }],
       },

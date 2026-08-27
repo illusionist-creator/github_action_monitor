@@ -11,6 +11,9 @@
 //      worst adjacent CVD ΔE 8.4, worst adjacent normal-vision ΔE 19.3,
 //      all >= 3:1 contrast.
 
+/** The card surface charts are drawn on. Used to fake gaps between fills. */
+export const SURFACE = '#13161b';
+
 /** Categorical slots, in fixed order. Never cycle a 9th hue — fold to "other". */
 export const CATEGORICAL = [
   '#3987e5', // blue

@@ -20,6 +20,7 @@ import {
 import {
   SEQUENTIAL_BLUE,
   STATUS_COLORS,
+  SURFACE,
   assignColors,
   entityColor,
   healthTone,
@@ -124,7 +125,7 @@ function renderOutcomes(index) {
           data: counts.map((c) => c.value),
           backgroundColor: counts.map((c) => STATUS_COLORS[c.key]),
           // A 2px surface gap keeps adjacent segments legible without a stroke.
-          borderColor: '#13161b',
+          borderColor: SURFACE,
           borderWidth: 2,
           hoverOffset: 4,
         }],
@@ -168,16 +169,14 @@ function renderVolume(buckets) {
       data: {
         labels: buckets.map((b) => b.label),
         datasets: [
-          { label: 'success', data: success, backgroundColor: STATUS_COLORS.success, stack: 'runs', borderRadius: 3, borderSkipped: false },
-          { label: 'failed', data: failed, backgroundColor: STATUS_COLORS.failed, stack: 'runs', borderRadius: 3, borderSkipped: false },
-          { label: 'other', data: other, backgroundColor: STATUS_COLORS.skipped, stack: 'runs', borderRadius: 3, borderSkipped: false },
+          { label: 'success', data: success, backgroundColor: STATUS_COLORS.success, stack: 'runs', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
+          { label: 'failed', data: failed, backgroundColor: STATUS_COLORS.failed, stack: 'runs', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
+          { label: 'other', data: other, backgroundColor: STATUS_COLORS.skipped, stack: 'runs', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        // 2px of surface between stacked segments, per the mark spec.
-        datasets: { bar: { borderWidth: { top: 2 } } },
         scales: { x: axis({ grid: false, stacked: true }), y: axis({ stacked: true }) },
       },
     },
@@ -370,14 +369,13 @@ function renderQueueSplit(index) {
       data: {
         labels: weeks.map((w) => w.label),
         datasets: [
-          { label: 'queue wait', data: weeks.map((w) => w.queue), backgroundColor: '#c98500', stack: 'a', borderRadius: 3, borderSkipped: false },
-          { label: 'execution', data: weeks.map((w) => w.exec), backgroundColor: '#3987e5', stack: 'a', borderRadius: 3, borderSkipped: false },
+          { label: 'queue wait', data: weeks.map((w) => w.queue), backgroundColor: '#c98500', stack: 'a', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
+          { label: 'execution', data: weeks.map((w) => w.exec), backgroundColor: '#3987e5', stack: 'a', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        datasets: { bar: { borderWidth: { top: 2 } } },
         plugins: { tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmtDuration(c.parsed.y)}` } } },
         scales: {
           x: axis({ grid: false, stacked: true }),
