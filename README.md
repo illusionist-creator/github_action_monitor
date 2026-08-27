@@ -93,9 +93,18 @@ src/js/views/           overview, live, repos, runs, failures, timeline, logs
 ```bash
 npm install       # jsdom, for the DOM smoke tests — nothing ships to the browser
 npm run build     # src/ -> index.html
-npm test          # 67 tests: units, security, and a real-DOM smoke suite
+npm test          # 72 tests: units, security, build, and a real-DOM smoke suite
 npm run check     # fail if index.html has drifted from src/
 ```
+
+### Publishing to GitHub Pages
+
+`.github/workflows/pages.yml` builds and deploys the single file, but it is
+`workflow_dispatch` only. Enabling Pages needs repository-admin rights that the
+workflow's own token does not have, so flip it once by hand — **Settings →
+Pages → Build and deployment → Source: "GitHub Actions"** — then either run the
+workflow from the Actions tab or add the `push` trigger back, which the file
+documents inline.
 
 `build.mjs` is a ~180-line zero-dependency bundler. It rewrites each ES module
 into a tiny registry factory and inlines the CSS, so the shipped file stays

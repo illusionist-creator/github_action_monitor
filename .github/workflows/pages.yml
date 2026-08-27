@@ -1,8 +1,17 @@
 name: Deploy to GitHub Pages
 
+# Manual until Pages is switched on for this repository:
+#   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
+#
+# That toggle needs repository-admin rights, which the workflow's GITHUB_TOKEN
+# does not have — `configure-pages` with `enablement: true` fails with
+# "Resource not accessible by integration". Leaving this on `push` would mean a
+# red X on every commit for a reason no commit can fix, so it waits to be asked.
+# Once the setting is flipped, add back:
+#
+#   push:
+#     branches: [main]
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -39,10 +48,6 @@ jobs:
           cp index.html _site/404.html
 
       - uses: actions/configure-pages@v5
-        with:
-          # Turn Pages on the first time this runs, so the repo needs no manual
-          # settings change to publish.
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v4
         with:
