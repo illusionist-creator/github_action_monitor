@@ -7,6 +7,7 @@ import {
   weeklyQueueSplit,
 } from '../data/analytics.js';
 import { html, raw, setHtml, setText } from '../lib/dom.js';
+import { fitWindow } from '../lib/store.js';
 import {
   fmtComputeMinutes,
   fmtDuration,
@@ -60,13 +61,34 @@ export function renderOverview(ctx) {
 
 /* ------------------------------------------------------------------ metrics */
 
-function renderMetrics({ index }) {
+function renderMetrics({ index, state, loadedRuns, newestRunTs }) {
   const o = index.overall;
   if (!o.total) {
-    setHtml('metricsRow', html`<div class="metric-card" style="grid-column:1/-1;">
-      <div class="metric-label">no data</div>
-      <div class="metric-sub">No runs found for the selected period.</div>
-    </div>`);
+    // "no data" on its own reads as "your CI is empty" or "this is broken". If
+    // runs were loaded and the window simply excludes them, say exactly that —
+    // and offer the fix, rather than leaving the reader to guess.
+    const hasOlder = Boolean(loadedRuns) && Boolean(newestRunTs);
+    const wider = hasOlder ? fitWindow([{ ts: newestRunTs }], state.days) : null;
+
+    setHtml('metricsRow', html`
+      <div class="metric-card" style="grid-column:1/-1;">
+        <div class="metric-label">no runs in the last ${state.days} day${state.days === 1 ? '' : 's'}</div>
+        ${hasOlder
+          ? html`
+            <div class="metric-sub" style="margin-top:6px;">
+              ${fmtNumber(loadedRuns)} run${loadedRuns === 1 ? '' : 's'} loaded${state.repo === 'all' ? '' : ` (filtered to ${state.repo})`} ·
+              most recent was ${timeAgo(newestRunTs)}
+            </div>
+            ${wider && wider !== state.days
+              ? html`<button class="logs-btn" type="button" data-action="widen-window" data-days="${wider}"
+                  style="margin-top:10px;">Show the last ${wider} days</button>`
+              : ''}
+          `
+          : html`<div class="metric-sub" style="margin-top:6px;">
+              Nothing has been loaded yet. Connect a token, or widen the time range.
+            </div>`}
+      </div>
+    `);
     setText('nav-fail-count', '0');
     return;
   }

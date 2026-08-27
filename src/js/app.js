@@ -7,7 +7,7 @@ import { GitHubClient, GitHubError, RateLimitError } from './data/github.js';
 import { $$, byId, delegate, html, setHtml, setText } from './lib/dom.js';
 import { fmtNumber, repoShortName, timeAgo } from './lib/format.js';
 import { entityColor, healthTone } from './lib/palette.js';
-import { Store, hashToState, selectRuns, stateToHash } from './lib/store.js';
+import { Store, fitWindow, hashToState, newestTimestamp, selectRuns, stateToHash } from './lib/store.js';
 import { destroyAll, initChartDefaults } from './ui/charts.js';
 import { viewError } from './ui/components.js';
 import { closeModal } from './ui/modal.js';
@@ -94,6 +94,8 @@ function rebuildIndex() {
     .filter((run) => run.status === 'in_progress')
     .filter((run) => store.state.repo === 'all' || run.repo === store.state.repo);
   ctx.catalogue = buildCatalogue(store.state.runs);
+  ctx.loadedRuns = store.state.runs.length;
+  ctx.newestRunTs = newestTimestamp(store.state.runs);
 }
 
 /**
@@ -316,7 +318,7 @@ async function connect(token, owner) {
     const result = await withDeadline(
       syncAll(client, {
         owner,
-        days: 30,
+        days: 90,
         pages: 2,
         onProgress: showSyncProgress,
       }),
@@ -359,6 +361,19 @@ async function connect(token, owner) {
     button.textContent = 'Connected';
 
     setText('connectStatus', `${repos.length} repos · ${fmtNumber(runs.length)} runs`);
+
+    const requested = store.state.days;
+    const fitted = fitWindow(runs, requested);
+    if (fitted !== requested) {
+      store.set({ days: fitted });
+      toast({
+        kind: 'info',
+        title: `Widened the window to ${fitted} days`,
+        body: `Nothing ran in the last ${requested} days. Your most recent run was ${timeAgo(newestTimestamp(runs))}.`,
+        timeout: 12_000,
+      });
+    }
+
     toast({
       kind: 'success',
       title: 'Connected',
@@ -432,7 +447,7 @@ async function refreshAll() {
     const result = await withDeadline(
       syncAll(ctx.client, {
         owner: store.state.owner,
-        days: 30,
+        days: 90,
         pages: 2,
         onProgress: showSyncProgress,
       }),
@@ -568,6 +583,10 @@ function wire() {
     const key = `${el.getAttribute('data-container')}:${el.getAttribute('data-repo-toggle')}`;
     ctx.expanded[key] = !ctx.expanded[key];
     render();
+  });
+
+  delegate(document, 'click', '[data-action="widen-window"]', (_event, el) => {
+    store.set({ days: Number(el.getAttribute('data-days')) });
   });
 
   delegate(document, 'click', '[data-action="show-more-runs"]', () => {

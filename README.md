@@ -100,7 +100,7 @@ src/js/views/           overview, live, repos, runs, failures, timeline, logs
 ```bash
 npm install       # jsdom, for the DOM smoke tests — nothing ships to the browser
 npm run build     # src/ -> index.html
-npm test          # 92 tests: units, security, build, and a real-DOM smoke suite
+npm test          # 96 tests: units, security, build, and a real-DOM smoke suite
 npm run check     # fail if index.html has drifted from src/
 ```
 
@@ -138,6 +138,13 @@ subtly broken output.
 ## Design notes
 
 A few decisions that are easy to get wrong:
+
+**The window follows the data.** The dashboard fetches 90 days of history but
+opens on a 7-day view. If nothing ran in that week, it widens to the smallest
+range that actually contains your runs and says so — rather than reporting
+"no data" for an account whose last build was a fortnight ago. Where even the
+widest range is empty, the empty state says how many runs are loaded and how old
+the newest one is.
 
 **Success rate excludes cancelled and skipped runs.** A repo with a
 concurrency-cancel policy cancels runs constantly; counting those as failures

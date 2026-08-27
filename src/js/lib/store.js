@@ -135,3 +135,26 @@ export function selectRuns(runs, { days, repo }, now = Date.now()) {
   const cutoff = now - days * 86400000;
   return runs.filter((run) => run.ts >= cutoff && (repo === 'all' || run.repo === repo));
 }
+
+export const WINDOW_PRESETS = [1, 7, 14, 30, 90];
+
+/**
+ * The smallest window that actually contains runs.
+ *
+ * The dashboard fetches months of history but opens on a 7-day view. A
+ * repository whose last build was a fortnight ago therefore loaded fine and
+ * then rendered as "no data" — which reads as "your CI is empty" or "this is
+ * broken", when the truth is only that the default window is too narrow.
+ */
+export function fitWindow(runs, current = DEFAULT_STATE.days, now = Date.now()) {
+  if (!runs.length) return current;
+  const newest = runs.reduce((max, run) => (run.ts > max ? run.ts : max), 0);
+  const ageDays = (now - newest) / 86400000;
+  if (ageDays <= current) return current;
+  return WINDOW_PRESETS.find((days) => days >= ageDays) || WINDOW_PRESETS[WINDOW_PRESETS.length - 1];
+}
+
+/** Newest run timestamp, without spreading a large array into Math.max. */
+export function newestTimestamp(runs) {
+  return runs.reduce((max, run) => (run.ts > max ? run.ts : max), 0) || null;
+}

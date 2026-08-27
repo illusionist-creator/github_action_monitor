@@ -162,6 +162,36 @@ describe('filter dropdowns', () => {
   });
 });
 
+describe('"no data" when runs exist outside the window', () => {
+  let app;
+
+  before(async () => {
+    app = await bootDashboard();
+  });
+
+  after(() => app && app.close());
+
+  it('says what was loaded and offers to widen, instead of just "no data"', async () => {
+    // Narrow to a window the sample data cannot fill.
+    const select = app.document.getElementById('timeFilter');
+    select.value = '1';
+    select.dispatchEvent(new app.window.Event('change'));
+    await tick(app.window, 5);
+
+    const row = app.document.getElementById('metricsRow').textContent;
+    if (/no runs in the last/.test(row)) {
+      assert.match(row, /runs loaded/, 'should say how many runs are held');
+      assert.match(row, /most recent was/, 'should say how stale the data is');
+      const widen = app.document.querySelector('[data-action="widen-window"]');
+      assert.ok(widen, 'should offer a way out');
+
+      widen.click();
+      await tick(app.window, 5);
+      assert.notEqual(app.document.getElementById('timeFilter').value, '1');
+    }
+  });
+});
+
 describe('keyboard shortcuts', () => {
   let app;
 

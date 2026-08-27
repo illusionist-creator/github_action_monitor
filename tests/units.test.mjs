@@ -26,7 +26,7 @@ import {
   truncate,
 } from '../src/js/lib/format.js';
 import { assignColors, entityColor, withAlpha } from '../src/js/lib/palette.js';
-import { Store, hashToState, selectRuns, stateToHash } from '../src/js/lib/store.js';
+import { Store, fitWindow, hashToState, newestTimestamp, selectRuns, stateToHash } from '../src/js/lib/store.js';
 import { cleanLogLine, latestRunPerRepo } from '../src/js/views/logs.js';
 import { expectedDuration, progressFor } from '../src/js/views/live.js';
 
@@ -413,6 +413,29 @@ describe('store', () => {
     await new Promise((r) => setTimeout(r, 5));
     assert.equal(seen.length, 1);
     assert.deepEqual(seen[0], ['repo', 'tab']);
+  });
+
+  it('widens the window to wherever the data actually is', () => {
+    // The dashboard fetches months of history but opens on 7 days. A repo whose
+    // last build was a fortnight ago loaded fine and then rendered as
+    // "no data", which reads as broken rather than as a too-narrow window.
+    const twelveDays = [{ ts: T0 - 12 * 86400000 }];
+    assert.equal(fitWindow(twelveDays, 7, T0), 14);
+    assert.equal(fitWindow([{ ts: T0 - 45 * 86400000 }], 7, T0), 90);
+    assert.equal(fitWindow([{ ts: T0 - 2 * 86400000 }], 7, T0), 7, 'leaves a usable window alone');
+    assert.equal(fitWindow([], 7, T0), 7, 'nothing loaded means nothing to fit');
+    // Older than every preset: stay at the widest rather than inventing one.
+    assert.equal(fitWindow([{ ts: T0 - 400 * 86400000 }], 7, T0), 90);
+  });
+
+  it('never widens a window the data already fits', () => {
+    assert.equal(fitWindow([{ ts: T0 - 20 * 86400000 }], 30, T0), 30);
+  });
+
+  it('finds the newest timestamp without spreading a huge array', () => {
+    const many = Array.from({ length: 200000 }, (_, i) => ({ ts: i }));
+    assert.equal(newestTimestamp(many), 199999);
+    assert.equal(newestTimestamp([]), null);
   });
 
   it('filters by window and repository', () => {
