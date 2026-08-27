@@ -67,9 +67,15 @@ export function axis({ callback, stacked = false, beginAtZero = true, grid = tru
 
 function destroy(id) {
   const existing = registry.get(id);
+  registry.delete(id);
   if (existing) {
-    existing.destroy();
-    registry.delete(id);
+    // A chart torn down mid-animation can throw from inside Chart.js. That is
+    // not a reason to abandon the render that is replacing it.
+    try {
+      existing.destroy();
+    } catch (err) {
+      console.warn(`[charts] destroying ${id} threw`, err);
+    }
   }
   const observer = observers.get(id);
   if (observer) {
@@ -78,7 +84,7 @@ function destroy(id) {
   }
 }
 
-/** Tear down every chart — called when the dataset is replaced wholesale. */
+/** Tear down every chart. Only for a full teardown, such as disconnecting. */
 export function destroyAll() {
   Array.from(registry.keys()).forEach(destroy);
 }
@@ -88,26 +94,41 @@ export function destroyAll() {
  *
  * @param {string} id      canvas element id
  * @param {object} config  Chart.js config
- * @param {object} [fallback]  { columns, rows, caption } rendered when Chart.js
- *                             is unavailable, and used as the canvas's
- *                             accessible description either way
+ * @param {object} [fallback]  { columns, rows, caption } rendered instead of the
+ *                             chart when it cannot be drawn — also the table
+ *                             view that keeps the data accessible
  */
 export function chart(id, config, fallback) {
   destroy(id);
   const canvas = document.getElementById(id);
   if (!canvas) return null;
 
+  // Restore the canvas before measuring it. A canvas left hidden behind an
+  // earlier fallback reports zero size, which would send every future render
+  // down the ResizeObserver path on an element that can never be resized —
+  // making one failure permanent by a second route.
+  clearFallback(canvas);
+
   if (!chartsAvailable()) {
-    renderFallback(canvas, fallback, 'Charts are unavailable — the Chart.js bundle did not load.');
+    showFallback(canvas, fallback, 'Charts are unavailable — the Chart.js bundle did not load.');
     return null;
   }
 
   const create = () => {
     if (registry.has(id) || !document.getElementById(id)) return;
     try {
+      // Chart.js keys instances by canvas and throws "Canvas is already in use"
+      // if one is still attached. Our registry can miss an instance — a render
+      // that was interrupted, a chart adopted from a previous config — so ask
+      // Chart.js itself rather than trusting only our own bookkeeping.
+      const orphan = globalThis.Chart.getChart ? globalThis.Chart.getChart(canvas) : null;
+      if (orphan) orphan.destroy();
+
       registry.set(id, new globalThis.Chart(canvas, config));
+      clearFallback(canvas);
     } catch (err) {
-      renderFallback(canvas, fallback, `This chart could not be drawn: ${err.message}`);
+      console.warn(`[charts] ${id} could not be drawn`, err);
+      showFallback(canvas, fallback, `This chart could not be drawn: ${err.message}`);
     }
   };
 
@@ -130,14 +151,51 @@ export function chart(id, config, fallback) {
   return null;
 }
 
-function renderFallback(canvas, fallback, message) {
+/**
+ * Put a message where a chart would go, without removing the canvas.
+ *
+ * Views that have nothing to plot must use this rather than overwriting the
+ * chart wrapper: doing that deletes the <canvas>, and the chart can never come
+ * back once the data does.
+ */
+export function chartMessage(id, message) {
+  destroy(id);
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  showFallback(canvas, null, message);
+}
+
+/**
+ * Show the table view beside the canvas — never in place of it.
+ *
+ * Replacing the holder's contents used to remove the <canvas> from the DOM, so
+ * a single transient failure was permanent: every later render found no canvas
+ * and gave up, and no refresh or tab switch could bring the charts back.
+ */
+function showFallback(canvas, fallback, message) {
   const holder = canvas.parentElement;
   if (!holder) return;
-  if (!fallback || !fallback.rows || !fallback.rows.length) {
-    setHtml(holder, html`<div class="empty-state">${message}</div>`);
-    return;
+  canvas.style.display = 'none';
+
+  let node = holder.querySelector(':scope > .chart-fallback');
+  if (!node) {
+    node = document.createElement('div');
+    node.className = 'chart-fallback';
+    holder.appendChild(node);
   }
-  setHtml(holder, dataTable(fallback, message));
+  setHtml(
+    node,
+    fallback && fallback.rows && fallback.rows.length
+      ? dataTable(fallback, message)
+      : html`<div class="empty-state">${message}</div>`,
+  );
+}
+
+function clearFallback(canvas) {
+  const holder = canvas.parentElement;
+  canvas.style.display = '';
+  const node = holder && holder.querySelector(':scope > .chart-fallback');
+  if (node) node.remove();
 }
 
 /** The table view. Also reachable on purpose, not only as an error path. */

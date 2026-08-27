@@ -107,7 +107,12 @@ export function delegate(root, eventName, selector, handler) {
   const el = typeof root === 'string' ? byId(root) : root;
   if (!el) return () => {};
   const listener = (event) => {
-    const match = event.target.closest(selector);
+    // event.target is not necessarily an Element: a keydown with nothing
+    // focused targets the document, and text nodes reach here too. Neither has
+    // .closest(), and calling it threw straight out of the listener.
+    const target = event.target;
+    if (!target || typeof target.closest !== 'function') return;
+    const match = target.closest(selector);
     if (match && el.contains(match)) handler(event, match);
   };
   el.addEventListener(eventName, listener);

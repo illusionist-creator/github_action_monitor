@@ -426,3 +426,13 @@
     color: var(--text3);
     line-height: 1.55;
 }
+
+/* ---- Chart fallback ------------------------------------------------------
+ * Sits beside the canvas rather than replacing it. Replacing the wrapper's
+ * contents removed the <canvas> from the DOM, so one transient failure was
+ * permanent — nothing could rebuild a chart whose canvas no longer existed. */
+
+.chart-fallback {
+    height: 100%;
+    overflow: auto;
+}

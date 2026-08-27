@@ -93,7 +93,7 @@ src/js/views/           overview, live, repos, runs, failures, timeline, logs
 ```bash
 npm install       # jsdom, for the DOM smoke tests — nothing ships to the browser
 npm run build     # src/ -> index.html
-npm test          # 74 tests: units, security, build, and a real-DOM smoke suite
+npm test          # 83 tests: units, security, build, and a real-DOM smoke suite
 npm run check     # fail if index.html has drifted from src/
 ```
 
@@ -156,9 +156,10 @@ The dashboard therefore leans on the JSON API for jobs, steps and check-run
 annotations — which is where the actual error text lives — and hands you a
 ready-made `gh run view --log` command for the rest.
 
-**Charts degrade to tables.** If Chart.js fails its integrity check or the CDN
-is unreachable, every chart renders as an accessible data table instead of a
-blank card.
+**Charts degrade to tables, reversibly.** If Chart.js fails its integrity check,
+the CDN is unreachable, or a single chart throws, that chart renders as an
+accessible data table instead of a blank card — placed *beside* the canvas, never
+replacing it, so the chart returns by itself the moment it can be drawn again.
 
 ## Accessibility
 

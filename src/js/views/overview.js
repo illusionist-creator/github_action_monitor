@@ -24,7 +24,7 @@ import {
   healthTone,
   withAlpha,
 } from '../lib/palette.js';
-import { axis, chart, dataTable, legend } from '../ui/charts.js';
+import { axis, chart, chartMessage, dataTable, legend } from '../ui/charts.js';
 import { emptyState, eventRow, metricCard, repoCard } from '../ui/components.js';
 
 const OUTCOMES = [
@@ -38,11 +38,10 @@ export function renderOverview(ctx) {
   const { index, state } = ctx;
   renderMetrics(ctx);
 
-  if (!index.runs.length) {
-    setHtml('overviewRepoGrid', emptyState('No runs in this window', 'Widen the time range, or pick a different repository.'));
-    return;
-  }
-
+  // No early return when the window is empty. Bailing out here left whatever
+  // charts had just been torn down in a destroyed state with nothing to rebuild
+  // them, so an empty filter emptied the whole tab until a reload. Every
+  // renderer below copes with an empty set and draws its own empty state.
   const buckets = dailyBuckets(index.runs, state.days);
   renderOutcomes(index);
   renderVolume(buckets);
@@ -228,10 +227,9 @@ function renderRecovery(index) {
     .slice(0, 8);
 
   if (!entries.length) {
-    const holder = document.getElementById('mttrChart');
-    if (holder && holder.parentElement) {
-      setHtml(holder.parentElement, emptyState('Nothing has broken', 'No failure was followed by a recovery in this window.'));
-    }
+    // Never overwrite the chart wrapper — that deletes the canvas, and the
+    // chart cannot come back when the data does.
+    chartMessage('mttrChart', 'Nothing has broken — no failure was followed by a recovery in this window.');
     return;
   }
 

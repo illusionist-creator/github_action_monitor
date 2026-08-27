@@ -66,15 +66,24 @@ function installShims(window, { withChart }) {
 
   if (withChart) {
     const created = [];
+    const live = new Map();
+    // `window.__chartFail = true` makes every construction throw, standing in
+    // for a transient Chart.js failure such as "Canvas is already in use".
     window.Chart = class {
       constructor(canvas, config) {
+        if (window.__chartFail) throw new Error('Canvas is already in use.');
         this.canvas = canvas;
         this.config = config;
         created.push({ id: canvas.id, config });
+        live.set(canvas, this);
       }
 
-      destroy() {}
+      destroy() {
+        live.delete(this.canvas);
+      }
     };
+    window.Chart.getChart = (canvas) => live.get(canvas) || null;
+    window.__liveCharts = live;
     window.Chart.defaults = {
       color: '',
       borderColor: '',
