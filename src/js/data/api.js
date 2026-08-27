@@ -50,6 +50,23 @@ export async function fetchRepositories(client, owner) {
     params: { per_page: 100, sort: 'pushed', affiliation: 'owner,collaborator,organization_member' },
     maxPages: 4,
   });
+
+  // An empty list here is not an empty account — the request succeeded, so the
+  // token is valid; it simply cannot see anything. That used to sail through as
+  // a successful connection and render a blank dashboard, which is
+  // indistinguishable from the app being broken. It is the most likely outcome
+  // for a fine-grained token created without granting repository access.
+  if (!data.length) {
+    throw new GitHubError(
+      'The token is valid but can see no repositories. '
+      + 'A fine-grained token needs Repository access set (All, or the ones you want) '
+      + 'plus Metadata: Read-only and Actions: Read-only. '
+      + 'A classic token needs the repo scope (or public_repo for public repositories only). '
+      + 'You can also type an owner or owner/repo in the box below to target one directly.',
+      { status: 200, kind: 'scope' },
+    );
+  }
+
   return data.map(normalizeRepo);
 }
 

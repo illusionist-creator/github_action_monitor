@@ -147,6 +147,25 @@ describe('syncAll outcome reporting', () => {
   });
 });
 
+describe('a token that can see nothing', () => {
+  it('reports a scope problem rather than a successful empty connect', async () => {
+    // The request succeeds, so the token is valid — it just cannot see any
+    // repository. This is what a fine-grained PAT does when repository access
+    // was never granted, and it used to render a blank dashboard while the
+    // toast said "Connected".
+    const client = clientWith(() => ({ status: 200, body: [] }));
+    await assert.rejects(
+      () => syncAll(client, {}),
+      (err) => err instanceof GitHubError && /can see no repositories/i.test(err.message),
+    );
+  });
+
+  it('still explains the failure for a named owner', async () => {
+    const client = clientWith(() => ({ status: 404, body: { message: 'Not Found' } }));
+    await assert.rejects(() => syncAll(client, { owner: 'ghost' }), /No repositories found/i);
+  });
+});
+
 describe('request deadlines', () => {
   it('gives up on a stalled request instead of waiting forever', async () => {
     // No timeout at all is what left the refresh button disabled with no error:

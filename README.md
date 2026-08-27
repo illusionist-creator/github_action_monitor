@@ -37,8 +37,9 @@ Paste a token in the sidebar. Optionally narrow the scope to one owner
 
 **Scopes needed**
 
-- Fine-grained token: *Actions: Read-only* (plus *Metadata: Read-only*, which is
-  mandatory anyway).
+- Fine-grained token: **Repository access** must be set (All repositories, or
+  the ones you want) — a token with none granted sees nothing at all — plus
+  *Actions: Read-only* and *Metadata: Read-only*.
 - Classic token: `repo` for private repositories, or `public_repo` if you only
   need public ones.
 
@@ -100,7 +101,7 @@ src/js/views/           overview, live, repos, runs, failures, timeline, logs
 ```bash
 npm install       # jsdom, for the DOM smoke tests — nothing ships to the browser
 npm run build     # src/ -> index.html
-npm test          # 96 tests: units, security, build, and a real-DOM smoke suite
+npm test          # 98 tests: units, security, build, and a real-DOM smoke suite
 npm run check     # fail if index.html has drifted from src/
 ```
 
