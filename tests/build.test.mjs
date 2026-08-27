@@ -76,7 +76,7 @@ describe('build', () => {
   });
 
   it('stages a deploy directory with --site', () => {
-    // Vercel and Pages both serve a directory, not a repo root. Without this,
+    // Static hosts serve a directory, not a repo root. Without this,
     // Vercel detects package.json, runs the build, then fails with
     // 'No Output Directory named "public" found'.
     const dir = join(ROOT, '.tmp-site');

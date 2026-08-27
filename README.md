@@ -4,7 +4,7 @@ A cross-repository dashboard for GitHub Actions: run health, queue time, flaky
 failures, recovery time, compute spend, and the job-and-step breakdown of any
 run — in **one static HTML file** with no server, no build step and no install.
 
-Open `index.html` from disk, drop it on GitHub Pages, or email it to a colleague.
+Open `index.html` from disk, drop it on any static host, or email it to a colleague.
 It boots into sample data, so you can see exactly what it does before deciding
 whether to give it a token.
 
@@ -99,19 +99,16 @@ npm run check     # fail if index.html has drifted from src/
 
 ### Publishing
 
-**Vercel** is configured in `vercel.json`: it runs `node build.mjs --site public`
+**Vercel** is the configured host (`vercel.json`): it runs `node build.mjs --site public`
 and serves that directory, with `X-Frame-Options` / `frame-ancestors` headers
 that a `<meta>` CSP cannot express — worth having on a page that holds a token.
 Adding a `package.json` is what makes this file necessary: without it Vercel
 serves the repo root as static files, with it Vercel detects a Node project and
 expects a build output directory.
 
-**GitHub Pages** is wired up in `.github/workflows/pages.yml`, which stages the
-same directory, but it runs on `workflow_dispatch` only. Enabling Pages needs
-repository-admin rights that the workflow's own token does not have, so flip it
-once by hand — **Settings → Pages → Build and deployment → Source: "GitHub
-Actions"** — then either run the workflow from the Actions tab or restore the
-`push` trigger, which the file documents inline.
+Any other static host works the same way — `node build.mjs --site <dir>` stages
+a directory containing the page and a `404.html` that serves it, so deep links
+survive a refresh.
 
 `build.mjs` is a ~180-line zero-dependency bundler. It rewrites each ES module
 into a tiny registry factory and inlines the CSS, so the shipped file stays

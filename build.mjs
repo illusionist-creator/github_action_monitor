@@ -2,7 +2,7 @@
 // Zero-dependency bundler: src/ -> index.html
 //
 // The dashboard's defining property is that it is ONE file you can open from
-// disk, host on GitHub Pages, or email to a colleague — no server, no install.
+// disk, host anywhere static, or email to a colleague — no server, no install.
 // The source is split into ES modules so it can be read, reviewed and unit
 // tested; this script inlines them back into that single artifact.
 //
@@ -211,9 +211,9 @@ function sha(text) {
 
 const argv = process.argv.slice(2);
 const check = argv.includes('--check');
-// `--site <dir>` also stages a deploy directory. Vercel and GitHub Pages both
-// insist on serving from a directory rather than a repo root, and serving the
-// root would publish src/, tests/ and package.json alongside the page.
+// `--site <dir>` also stages a deploy directory. Static hosts serve a directory
+// rather than a repo root, and serving the root would publish src/, tests/ and
+// package.json alongside the page.
 const siteFlag = argv.indexOf('--site');
 const siteDir = siteFlag === -1 ? null : (argv[siteFlag + 1] || 'public');
 
