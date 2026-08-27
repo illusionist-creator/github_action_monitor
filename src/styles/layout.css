@@ -1,0 +1,317 @@
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sidebar-logo {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-icon {
+    width: 30px;
+    height: 30px;
+    background: var(--green-dim);
+    border: 1px solid rgba(62, 207, 142, 0.3);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.logo-text {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+}
+.logo-sub {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--mono);
+}
+
+.nav-section {
+    padding: 16px 12px 8px;
+}
+.nav-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0 8px;
+    margin-bottom: 6px;
+    font-family: var(--mono);
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 13px;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+    user-select: none;
+}
+.nav-item:hover {
+    background: var(--bg3);
+    color: var(--text);
+}
+.nav-item.active {
+    background: var(--bg3);
+    color: var(--text);
+    border-color: var(--border);
+}
+.nav-item.disabled {
+    pointer-events: none;
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.nav-item .nav-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.nav-item .nav-count {
+    margin-left: auto;
+    font-size: 10px;
+    font-family: var(--mono);
+    background: var(--bg4);
+    padding: 1px 6px;
+    border-radius: 10px;
+    color: var(--text3);
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+}
+.token-input-wrap {
+    margin-top: 8px;
+}
+.token-label {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-bottom: 5px;
+}
+.token-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 6px 8px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, opacity 0.2s;
+}
+.token-input:focus {
+    border-color: var(--green);
+}
+.token-input::placeholder {
+    color: var(--text3);
+}
+.token-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg3);
+}
+.connect-btn {
+    width: 100%;
+    margin-top: 6px;
+    background: rgba(62, 207, 142, 0.15);
+    border: 1px solid rgba(62, 207, 142, 0.3);
+    border-radius: var(--radius);
+    color: var(--green);
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.connect-btn:hover {
+    background: rgba(62, 207, 142, 0.25);
+}
+.connect-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.disconnect-btn {
+    width: 100%;
+    margin-top: 4px;
+    background: rgba(240, 82, 82, 0.1);
+    border: 1px solid rgba(240, 82, 82, 0.25);
+    border-radius: var(--radius);
+    color: var(--red);
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: none;
+}
+.disconnect-btn:hover {
+    background: rgba(240, 82, 82, 0.2);
+}
+.disconnect-btn.visible {
+    display: block;
+}
+
+/* ── Main ── */
+.main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: opacity var(--transition-speed) ease;
+}
+
+
+
+.topbar {
+    height: 56px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 12px;
+    background: var(--bg2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.topbar-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.topbar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ctrl-select {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--mono);
+    padding: 6px 10px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 26px;
+    transition: border-color 0.2s, opacity 0.2s;
+}
+.ctrl-select:focus {
+    border-color: var(--green);
+}
+.ctrl-select:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.live-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--green);
+    background: var(--green-dim);
+    border: 1px solid rgba(62, 207, 142, 0.2);
+    padding: 4px 9px;
+    border-radius: 20px;
+    transition: all 0.3s;
+}
+.live-badge.demo-mode {
+    color: var(--text3);
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--border);
+}
+.live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease infinite;
+}
+.live-badge.demo-mode .live-dot {
+    background: var(--text3);
+    animation: none;
+}
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.content {
+    padding: 24px;
+    flex: 1;
+    transition: opacity var(--transition-speed) ease;
+}
+.content.disabled {
+    opacity: 0.35;
+    pointer-events: none;
+    user-select: none;
+}
+
+.tab-panel {
+    display: none;
+}
+.tab-panel.active {
+    display: block;
+}
+
+/* FIX: canvas must fill its .chart-wrap container so Chart.js reads
+   non-zero dimensions even on first render in demo/disabled mode.
+   Without this, clientWidth/clientHeight can be 0 when the content
+   area has opacity:0.35 but is still laid out in the DOM. */

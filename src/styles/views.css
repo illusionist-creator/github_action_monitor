@@ -1,0 +1,428 @@
+/* Additions on top of the original component styles. */
+
+/* ---- Rate-limit meter -------------------------------------------------- */
+
+.rate-meter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+}
+
+.rate-track {
+    width: 54px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bg4);
+    overflow: hidden;
+}
+
+.rate-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width var(--transition-speed);
+}
+
+.rate-fill.warn { background: var(--amber); }
+.rate-fill.low { background: var(--red); }
+
+/* ---- Toasts ------------------------------------------------------------ */
+
+.toast-stack {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 120;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: min(420px, calc(100vw - 32px));
+}
+
+.toast {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-left-width: 3px;
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.toast.error { border-left-color: var(--red); }
+.toast.warn { border-left-color: var(--amber); }
+.toast.info { border-left-color: var(--blue); }
+.toast.success { border-left-color: var(--green); }
+
+.toast-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.toast-body {
+    color: var(--text2);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.toast-close {
+    margin-left: auto;
+    background: none;
+    border: 0;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+}
+
+/* ---- Error boundary ---------------------------------------------------- */
+
+.view-error {
+    border: 1px solid rgba(208, 59, 59, 0.35);
+    background: var(--red-dim);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+}
+
+.view-error code {
+    display: block;
+    margin-top: 6px;
+    color: var(--text2);
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ---- Legends (identity is never colour alone) -------------------------- */
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+}
+
+.legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.legend-swatch.line {
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+}
+
+.legend-value {
+    color: var(--text3);
+}
+
+/* ---- Nav / tabs (now real controls) ------------------------------------ */
+
+.nav-item {
+    width: 100%;
+    text-align: left;
+    background: none;
+    font-family: inherit;
+}
+
+.nav-item[aria-selected='true'] {
+    background: var(--bg3);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+.nav-empty {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    padding: 6px 10px;
+}
+
+/* ---- Progress bar for a sync ------------------------------------------- */
+
+.sync-bar {
+    height: 2px;
+    background: var(--bg4);
+    border-radius: 1px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.sync-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0;
+    transition: width 0.2s linear;
+}
+
+/* ---- Data table sorting ------------------------------------------------ */
+
+.runs-table th[aria-sort] {
+    cursor: pointer;
+    user-select: none;
+}
+
+.runs-table th[aria-sort]::after {
+    content: '';
+    margin-left: 5px;
+    opacity: 0.5;
+}
+
+.runs-table th[aria-sort='ascending']::after { content: '▲'; opacity: 1; }
+.runs-table th[aria-sort='descending']::after { content: '▼'; opacity: 1; }
+
+.run-row {
+    cursor: pointer;
+}
+
+.demo-flag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-dim);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+/* ---- Empty states ------------------------------------------------------ */
+
+.empty-state {
+    text-align: center;
+    padding: 36px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+}
+
+.empty-state strong {
+    display: block;
+    color: var(--text2);
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+/* ---- Modal focus containment ------------------------------------------- */
+
+.log-modal:not(.open) {
+    pointer-events: none;
+}
+
+/* ---- Responsive -------------------------------------------------------- */
+
+@media (max-width: 860px) {
+    .layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .topbar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+/* ---- Pulse feed --------------------------------------------------------- */
+
+.pulse-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.pulse-row:last-child { border-bottom: 0; }
+
+.pulse-icon {
+    flex-shrink: 0;
+    line-height: 1.5;
+    font-size: 12px;
+}
+
+.pulse-text {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pulse-sub {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 1px;
+}
+
+/* ---- Repo summary is now a real button --------------------------------- */
+
+.repo-summary {
+    width: 100%;
+    background: none;
+    border: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+}
+
+.section-sub {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+}
+
+/* ---- Live run cards ----------------------------------------------------- */
+
+.live-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+}
+
+.live-card.overrun { border-color: rgba(208, 59, 59, 0.3); }
+
+.live-track {
+    height: 6px;
+    background: var(--bg4);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.live-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s linear;
+}
+
+.finished-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    background: var(--bg3);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+/* ---- Matrix ------------------------------------------------------------- */
+
+.matrix {
+    border-collapse: separate;
+    border-spacing: 2px;
+    font-family: var(--mono);
+    font-size: 11px;
+    min-width: 100%;
+}
+
+.matrix th {
+    padding: 4px 6px;
+    text-align: center;
+    color: var(--text3);
+    font-weight: 400;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.matrix th[scope='row'] {
+    text-align: left;
+    color: var(--text2);
+    font-size: 11px;
+    padding-right: 10px;
+}
+
+.matrix td {
+    padding: 6px;
+    text-align: center;
+    min-width: 56px;
+    border-radius: 3px;
+    color: var(--text);
+}
+
+.matrix td.empty { color: var(--text3); background: var(--bg3); }
+
+/* ---- Sample-data banner -------------------------------------------------
+ * Replaces the original full-page scrim. Blurring the whole dashboard behind
+ * a modal card defeated the point of shipping sample data — you could not read
+ * what you were being invited to explore, and the card centred itself in the
+ * full scroll height, far below the fold. */
+
+.sample-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+
+.sample-banner[hidden] { display: none; }
+
+.sample-icon {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    background: var(--accent-dim);
+    border: 1px solid rgba(62, 207, 142, 0.3);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+}
+
+.sample-icon svg { width: 17px; height: 17px; }
+
+.sample-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 3px;
+}
+
+.sample-sub {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+    line-height: 1.55;
+}

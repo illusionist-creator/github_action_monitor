@@ -1,0 +1,72 @@
+/* Design tokens.
+ *
+ * Chrome colours (surfaces, ink, brand accent) keep the original identity.
+ * DATA colours do not live here — they come from src/js/lib/palette.js, which
+ * carries a categorical set validated for colour-vision deficiency against the
+ * #13161b card surface. Keeping the two apart is what stops a chart series from
+ * accidentally borrowing the "failure" red. */
+
+:root {
+    color-scheme: dark;
+
+    /* Surfaces, darkest to lightest */
+    --bg: #0d0f12;
+    --bg2: #13161b;
+    --bg3: #1a1e25;
+    --bg4: #212630;
+
+    --border: rgba(255, 255, 255, 0.07);
+    --border2: rgba(255, 255, 255, 0.12);
+
+    /* Ink */
+    --text: #e8eaf0;
+    --text2: #8b909e;
+    --text3: #767c8b;
+
+    /* Brand accent — UI chrome only, never a data series */
+    --accent: #3ecf8e;
+    --accent-dim: rgba(62, 207, 142, 0.12);
+
+    /* Status. Fixed, reserved, and always paired with an icon and a label so
+     * hue never carries the meaning by itself. */
+    --green: #0ca30c;
+    --green-dim: rgba(12, 163, 12, 0.14);
+    --red: #d03b3b;
+    --red-dim: rgba(208, 59, 59, 0.14);
+    --amber: #fab219;
+    --amber-dim: rgba(250, 178, 25, 0.14);
+    --blue: #3987e5;
+    --blue-dim: rgba(57, 135, 229, 0.14);
+    --purple: #9085e9;
+    --purple-dim: rgba(144, 133, 233, 0.14);
+
+    /* Chart chrome */
+    --grid: rgba(255, 255, 255, 0.05);
+    --axis: #767c8b;
+
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+    --radius: 8px;
+    --radius-lg: 12px;
+    --transition-speed: 0.3s;
+
+    --focus: #7fb2ff;
+}
+
+/* The one place a real reduced-motion preference has to reach: every transition
+ * and keyframe in this file. Vestibular triggers are not a nice-to-have. */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --transition-speed: 0s;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

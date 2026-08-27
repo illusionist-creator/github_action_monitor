@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # index.html is a build artifact that is committed, because the whole
+      # point of this project is that one file works with no toolchain. This
+      # step fails the build if it drifts from src/.
+      - name: Verify index.html matches src/
+        run: node build.mjs --check
+
+      - name: Unit, security and DOM smoke tests
+        run: npm test
+
+  audit:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The token must never be persisted
+        run: |
+          # localStorage/sessionStorage/cookies would survive the tab and put a
+          # PAT on disk. The dashboard keeps it in memory only.
+          if grep -rnE '\b(localStorage|sessionStorage|document\.cookie|indexedDB)\b' src/js; then
+            echo "::error::Credentials must not touch persistent browser storage"
+            exit 1
+          fi
+
+      - name: No unescaped innerHTML assignments outside lib/dom.js
+        run: |
+          # Every render path must go through the escaping `html` template.
+          if grep -rn 'innerHTML' src/js --include='*.js' | grep -v 'src/js/lib/dom.js'; then
+            echo "::error::Assign markup with setHtml(el, html\`...\`) instead of innerHTML"
+            exit 1
+          fi
+
+      - name: No inline event handler attributes
+        run: |
+          if grep -nE '\son(click|change|load|error|submit|input)=' src/index.html; then
+            echo "::error::Use delegated listeners and data-* attributes, not inline handlers"
+            exit 1
+          fi
+
+      - name: Requests only ever go to the GitHub API
+        run: |
+          if grep -rnE "fetch\(['\"]https?://" src/js | grep -v 'api.github.com'; then
+            echo "::error::Unexpected outbound request host"
+            exit 1
+          fi

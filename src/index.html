@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub Actions Monitor</title>
+    <meta name="description" content="Cross-repository monitoring, analytics and log forensics for GitHub Actions — a single static page." />
+    <meta name="color-scheme" content="dark" />
+    <meta name="referrer" content="no-referrer" />
+    <!-- The page holds a personal access token in memory. The policy below means
+         that even if markup were injected, script can only come from this
+         document, and data can only be sent to api.github.com. -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://api.github.com https://*.githubusercontent.com; base-uri 'none'; form-action 'none'" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet" />
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='3' fill='none' stroke='%233ecf8e' stroke-width='1.5'/%3E%3Cpath d='M8 2v2M8 12v2M2 8h2M12 8h2' stroke='%233ecf8e' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <!-- Subresource integrity: a compromised CDN cannot swap this file for one
+         that reads the token out of the page. If the hash fails the script
+         simply does not run, and every chart falls back to its data table. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"
+        integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!--@styles-->
+</head>
+
+<body>
+    <a class="skip-link" href="#mainContent">Skip to dashboard</a>
+
+    <div class="layout">
+
+        <!-- ── Sidebar ── -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="8" cy="8" r="3" stroke="#3ecf8e" stroke-width="1.5" />
+                        <path d="M8 2v2M8 12v2M2 8h2M12 8h2" stroke="#3ecf8e" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="logo-text">Actions</div>
+                    <div class="logo-sub" id="logoSub">sample data</div>
+                </div>
+            </div>
+
+            <nav class="nav-section" aria-label="Views">
+                <div class="nav-label" id="views-label">Views</div>
+                <div role="tablist" aria-labelledby="views-label" id="viewTabs">
+                    <button class="nav-item" type="button" role="tab" aria-selected="true" data-tab="overview"
+                        id="nav-overview" aria-controls="tab-overview">
+                        <span class="nav-dot dot-green" aria-hidden="true"></span>
+                        Overview
+                    </button>
+                    <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="live"
+                        id="nav-live" aria-controls="tab-live">
+                        <span class="nav-dot live-dot" aria-hidden="true"></span>
+                        Live now
+                        <span class="nav-count" id="nav-live-count">0</span>
+                    </button>
+                    <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="repos"
+                        id="nav-repos" aria-controls="tab-repos">
+                        <span class="nav-dot dot-blue" aria-hidden="true"></span>
+                        Repositories
+                        <span class="nav-count" id="nav-repo-count">—</span>
+                    </button>
+                    <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="runs"
+                        id="nav-runs" aria-controls="tab-runs">
+                        <span class="nav-dot dot-amber" aria-hidden="true"></span>
+                        All runs
+                    </button>
+                    <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="failures"
+                        id="nav-failures" aria-controls="tab-failures">
+                        <span class="nav-dot dot-red" aria-hidden="true"></span>
+                        Failures
+                        <span class="nav-count" id="nav-fail-count">—</span>
+                    </button>
+                    <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="logs"
+                        id="nav-logs" aria-controls="tab-logs">
+                        <span class="nav-dot dot-purple" aria-hidden="true"></span>
+                        Run logs
+                        <span class="nav-count" id="nav-logs-count">—</span>
+                    </button>
+                    <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="timeline"
+                        id="nav-timeline" aria-controls="tab-timeline">
+                        <span class="nav-dot dot-purple" aria-hidden="true"></span>
+                        Timeline
+                    </button>
+                </div>
+            </nav>
+
+            <div class="nav-section">
+                <div class="nav-label">Repositories</div>
+                <div id="sidebar-repo-list"></div>
+            </div>
+
+            <div class="sidebar-footer">
+                <form id="connectForm" autocomplete="off">
+                    <div class="token-input-wrap">
+                        <label class="token-label" for="tokenInput">GitHub token</label>
+                        <input class="token-input" type="password" id="tokenInput" name="token"
+                            placeholder="ghp_… or github_pat_…" autocomplete="off" autocorrect="off"
+                            autocapitalize="off" spellcheck="false"
+                            aria-describedby="tokenHelp" />
+                        <div class="token-label" id="tokenHelp" style="margin-top:4px;">
+                            Needs <code>actions:read</code> (fine-grained) or <code>repo</code> (classic).
+                            Stays in this tab; never stored or sent anywhere but api.github.com.
+                        </div>
+                    </div>
+                    <div class="token-input-wrap">
+                        <label class="token-label" for="orgInput">Owner or owner/repo (optional)</label>
+                        <input class="token-input" type="text" id="orgInput" name="owner"
+                            placeholder="octocat or octocat/hello-world" autocomplete="off" spellcheck="false" />
+                    </div>
+                    <button class="connect-btn" id="connectBtn" type="submit">Connect live data</button>
+                </form>
+                <button class="disconnect-btn" id="disconnectBtn" type="button">Disconnect</button>
+                <div class="sync-bar" id="syncBar" hidden><div class="sync-fill" id="syncFill"></div></div>
+                <div id="connectStatus" role="status"
+                    style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:5px;"></div>
+                <div class="rate-meter" id="rateMeter" hidden style="margin-top:8px;">
+                    <span>api</span>
+                    <div class="rate-track"><div class="rate-fill" id="rateFill"></div></div>
+                    <span id="rateLabel">—</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ── Main ── -->
+        <main class="main" id="mainContent">
+            <div class="topbar">
+                <h1 class="topbar-title" id="topbar-title">Overview</h1>
+                <div class="topbar-controls">
+                    <button class="refresh-btn" id="refreshBtn" type="button" title="Refresh data (r)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                            <polyline points="23 4 23 10 17 10" />
+                            <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
+                        </svg>
+                        Refresh
+                    </button>
+                    <label class="sr-only" for="repoFilter">Repository</label>
+                    <select class="ctrl-select" id="repoFilter" data-state="repo">
+                        <option value="all">All repos</option>
+                    </select>
+                    <label class="sr-only" for="timeFilter">Time range</label>
+                    <select class="ctrl-select" id="timeFilter" data-state="days">
+                        <option value="1">Last 24 hours</option>
+                        <option value="7">Last 7 days</option>
+                        <option value="14">Last 14 days</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                    <div class="live-badge demo-mode" id="liveBadge">
+                        <div class="live-dot" aria-hidden="true"></div><span id="liveBadgeText">sample</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content" id="contentArea">
+
+                <div class="sample-banner" id="mainOverlay">
+                    <div class="sample-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" />
+                            <path d="M7 11V7a5 5 0 0110 0v4" />
+                        </svg>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div class="sample-title">You are looking at sample data</div>
+                        <div class="sample-sub">Every number below is generated. Add a token in the sidebar to
+                            monitor your own repositories — it stays in this tab.</div>
+                    </div>
+                    <button class="logs-btn" id="dismissOverlay" type="button">Dismiss</button>
+                </div>
+
+                <!-- ── Overview ── -->
+                <section class="tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="nav-overview"
+                    tabindex="-1">
+                    <div class="metrics" id="metricsRow"></div>
+
+                    <div class="two-col section">
+                        <div class="card">
+                            <div class="card-title">run outcomes</div>
+                            <div class="chart-wrap" style="height:200px;">
+                                <canvas id="outcomeChart" role="img"
+                                    aria-label="Share of runs by outcome"></canvas>
+                            </div>
+                            <div class="legend" id="outcomeLegend" style="margin-top:12px;"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">daily run volume</div>
+                            <div class="chart-wrap" style="height:200px;">
+                                <canvas id="volumeChart" role="img" aria-label="Runs started per day"></canvas>
+                            </div>
+                            <div class="legend" id="volumeLegend" style="margin-top:12px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card section">
+                        <div class="card-title">average duration trend by workflow</div>
+                        <div class="legend" id="durationLegend" style="margin-bottom:12px;"></div>
+                        <div class="chart-wrap" style="height:220px;">
+                            <canvas id="durationChart" role="img"
+                                aria-label="Average successful run duration per day, one line per workflow"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card section">
+                        <div class="section-head" style="margin-bottom:16px;">
+                            <div>
+                                <div class="card-title" style="margin-bottom:2px;">repository health</div>
+                                <div class="section-sub">reliability 60% · speed 20% · recovery 20%</div>
+                            </div>
+                        </div>
+                        <div class="repo-grid" id="overviewRepoGrid"></div>
+                    </div>
+
+                    <div class="card section">
+                        <div class="section-head" style="margin-bottom:16px;">
+                            <div>
+                                <div class="card-title" style="margin-bottom:2px;">workflow efficiency matrix</div>
+                                <div class="section-sub">each cell is one repository × workflow</div>
+                            </div>
+                            <label class="sr-only" for="matrixMetric">Matrix metric</label>
+                            <select class="ctrl-select" id="matrixMetric" data-state="metric">
+                                <option value="success">success rate</option>
+                                <option value="duration">avg duration</option>
+                                <option value="queue">queue wait</option>
+                                <option value="runs">run volume</option>
+                            </select>
+                        </div>
+                        <div id="matrixWrap" style="overflow-x:auto;"></div>
+                        <div class="legend" id="matrixLegend" style="margin-top:14px;"></div>
+                    </div>
+
+                    <div class="two-col section" style="align-items:start;">
+                        <div class="card">
+                            <div class="section-head" style="margin-bottom:14px;">
+                                <div class="card-title" style="margin-bottom:0;">ci pulse</div>
+                                <span class="section-sub">notable events</span>
+                            </div>
+                            <div id="ciPulseFeed"></div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:16px;">
+                            <div class="card">
+                                <div class="card-title">green streaks</div>
+                                <div id="streakGrid" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;"></div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title">top time sinks</div>
+                                <div id="timeSinks" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="two-col section" style="align-items:start;">
+                        <div class="card">
+                            <div class="section-head" style="margin-bottom:14px;">
+                                <div>
+                                    <div class="card-title" style="margin-bottom:2px;">recovery time</div>
+                                    <div class="section-sub">median minutes from first red to next green</div>
+                                </div>
+                            </div>
+                            <div class="chart-wrap" style="height:240px;">
+                                <canvas id="mttrChart" role="img"
+                                    aria-label="Mean time to recovery per repository"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="section-head" style="margin-bottom:10px;">
+                                <div>
+                                    <div class="card-title" style="margin-bottom:2px;">compute burn rate</div>
+                                    <div class="section-sub">minutes consumed per day</div>
+                                </div>
+                            </div>
+                            <div class="chart-wrap" style="height:140px;">
+                                <canvas id="burnRateChart" role="img"
+                                    aria-label="Compute minutes consumed per day"></canvas>
+                            </div>
+                            <div id="burnRateStats"
+                                style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card section">
+                        <div class="section-head" style="margin-bottom:0;">
+                            <div>
+                                <div class="card-title" style="margin-bottom:2px;">activity heatmap — day × hour</div>
+                                <div class="section-sub">local time</div>
+                            </div>
+                            <div style="display:flex;gap:6px;">
+                                <label class="sr-only" for="heatRepo">Heatmap repository</label>
+                                <select class="ctrl-select" id="heatRepo" data-state="heatRepo">
+                                    <option value="all">all repos</option>
+                                </select>
+                                <label class="sr-only" for="heatMetric">Heatmap metric</label>
+                                <select class="ctrl-select" id="heatMetric" data-state="heatMetric">
+                                    <option value="runs">run count</option>
+                                    <option value="duration">avg duration</option>
+                                    <option value="queue">avg queue wait</option>
+                                    <option value="failures">failures</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="heatmapArea" style="margin-top:16px;overflow-x:auto;"></div>
+                        <div class="heat-legend" id="heatLegend"></div>
+                    </div>
+
+                    <div class="two-col section">
+                        <div class="card">
+                            <div class="card-title">queue wait vs execution</div>
+                            <div class="chart-wrap" style="height:220px;">
+                                <canvas id="queueChart" role="img"
+                                    aria-label="Average queue wait and execution time per week"></canvas>
+                            </div>
+                            <div class="legend" id="queueLegend" style="margin-top:10px;"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">p95 duration by workflow</div>
+                            <div class="chart-wrap" style="height:220px;">
+                                <canvas id="p95Chart" role="img"
+                                    aria-label="95th percentile duration per workflow"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ── Live ── -->
+                <section class="tab-panel" id="tab-live" role="tabpanel" aria-labelledby="nav-live" tabindex="-1">
+                    <div class="section-head" style="margin-bottom:18px;">
+                        <div>
+                            <div class="card-title" style="margin-bottom:2px;">running right now</div>
+                            <div class="section-sub" id="livePollNote">progress estimated from each workflow's own median</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <label class="sr-only" for="liveRepoFilter">Live repository filter</label>
+                            <select class="ctrl-select" id="liveRepoFilter"><option value="all">all repos</option></select>
+                            <button class="logs-btn" id="liveRefreshBtn" type="button">refresh</button>
+                        </div>
+                    </div>
+
+                    <div class="metrics" id="liveMetrics" style="margin-bottom:20px;"></div>
+
+                    <div class="card section">
+                        <div class="section-head" style="margin-bottom:14px;">
+                            <span class="card-title" style="margin-bottom:0;">active runs</span>
+                            <span class="section-sub" id="liveRunCount"></span>
+                        </div>
+                        <div id="liveRunsList" style="display:flex;flex-direction:column;gap:10px;"></div>
+                    </div>
+
+                    <div class="card section">
+                        <div class="section-head" style="margin-bottom:14px;">
+                            <div>
+                                <div class="card-title" style="margin-bottom:2px;">just finished</div>
+                                <div class="section-sub">completed in the last 15 minutes</div>
+                            </div>
+                        </div>
+                        <div id="liveRecentList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                    </div>
+                </section>
+
+                <!-- ── Repositories ── -->
+                <section class="tab-panel" id="tab-repos" role="tabpanel" aria-labelledby="nav-repos" tabindex="-1">
+                    <div class="section">
+                        <div class="section-head">
+                            <span class="section-title">repository breakdown</span>
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <label class="section-sub" for="repoSort">sort by</label>
+                                <select class="ctrl-select" id="repoSort" data-state="sort">
+                                    <option value="health">health</option>
+                                    <option value="runs">runs</option>
+                                    <option value="compute">compute</option>
+                                    <option value="failures">failures</option>
+                                    <option value="duration">duration</option>
+                                    <option value="queue">queue wait</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="repo-grid" id="reposTabGrid"></div>
+                    </div>
+                </section>
+
+                <!-- ── All runs ── -->
+                <section class="tab-panel" id="tab-runs" role="tabpanel" aria-labelledby="nav-runs" tabindex="-1">
+                    <div class="card section">
+                        <div class="section-head">
+                            <span class="card-title" style="margin-bottom:0;">all workflow runs</span>
+                            <span class="section-sub" id="runsCount"></span>
+                        </div>
+                        <div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap;">
+                            <label class="sr-only" for="runsStatusFilter">Status</label>
+                            <select class="ctrl-select" id="runsStatusFilter" data-state="status">
+                                <option value="all">all statuses</option>
+                                <option value="success">success</option>
+                                <option value="failed">failed</option>
+                                <option value="in_progress">running</option>
+                                <option value="cancelled">cancelled</option>
+                                <option value="skipped">skipped</option>
+                            </select>
+                            <label class="sr-only" for="runsWfFilter">Workflow</label>
+                            <select class="ctrl-select" id="runsWfFilter" data-state="workflow">
+                                <option value="all">all workflows</option>
+                            </select>
+                        </div>
+                        <div class="runs-table-wrap">
+                            <table class="runs-table">
+                                <caption class="sr-only">Workflow runs in the selected window</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">status</th>
+                                        <th scope="col">workflow</th>
+                                        <th scope="col">repository</th>
+                                        <th scope="col">branch</th>
+                                        <th scope="col">duration</th>
+                                        <th scope="col">queued</th>
+                                        <th scope="col">ran</th>
+                                        <th scope="col" style="text-align:right;">logs</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="runsTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div id="runsMore" style="margin-top:12px;"></div>
+                    </div>
+                </section>
+
+                <!-- ── Failures ── -->
+                <section class="tab-panel" id="tab-failures" role="tabpanel" aria-labelledby="nav-failures"
+                    tabindex="-1">
+                    <div class="two-col section">
+                        <div class="card">
+                            <div class="card-title">failures by workflow category</div>
+                            <div class="chart-wrap" style="height:200px;">
+                                <canvas id="failCatChart" role="img"
+                                    aria-label="Failure count per workflow category"></canvas>
+                            </div>
+                            <div class="section-sub" style="margin-top:8px;">
+                                categorised from the workflow name — a heuristic, not log analysis
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">flaky vs sticky failures</div>
+                            <div class="chart-wrap" style="height:200px;">
+                                <canvas id="flakyChart" role="img"
+                                    aria-label="Flaky versus sticky failures"></canvas>
+                            </div>
+                            <div class="legend" id="flakyLegend" style="margin-top:12px;"></div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-head">
+                            <span class="section-title">recent failures</span>
+                            <span class="section-sub" id="failuresCount"></span>
+                        </div>
+                        <div class="failure-cards" id="failureCards"></div>
+                    </div>
+                </section>
+
+                <!-- ── Run logs ── -->
+                <section class="tab-panel" id="tab-logs" role="tabpanel" aria-labelledby="nav-logs" tabindex="-1">
+                    <div class="card section">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">last run · every repository</div>
+                                <div class="section-sub">job and step breakdown for the newest run in each repo</div>
+                            </div>
+                            <div class="rlog-bar" style="margin-bottom:0;">
+                                <label class="sr-only" for="logsRunPick">Which run</label>
+                                <select class="ctrl-select" id="logsRunPick" data-state="runPick">
+                                    <option value="latest">latest run</option>
+                                    <option value="completed">latest completed run</option>
+                                </select>
+                                <label class="sr-only" for="logsScopeFilter">Scope</label>
+                                <select class="ctrl-select" id="logsScopeFilter" data-state="scope">
+                                    <option value="all">all repos</option>
+                                    <option value="failed">failed only</option>
+                                    <option value="attention">failed or running</option>
+                                </select>
+                                <button class="logs-btn" id="logsReloadBtn" type="button">reload all</button>
+                            </div>
+                        </div>
+                        <div class="rlog-bar"><span class="rlog-prog" id="logsProgress"></span></div>
+                        <div id="logsRepoList"></div>
+                    </div>
+                </section>
+
+                <!-- ── Timeline ── -->
+                <section class="tab-panel" id="tab-timeline" role="tabpanel" aria-labelledby="nav-timeline"
+                    tabindex="-1">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+                        <label class="sr-only" for="tlWfFilter">Workflow</label>
+                        <select class="ctrl-select" id="tlWfFilter" data-state="workflow">
+                            <option value="all">all workflows</option>
+                        </select>
+                        <label class="sr-only" for="tlStatusFilter">Status</label>
+                        <select class="ctrl-select" id="tlStatusFilter" data-state="status">
+                            <option value="all">all statuses</option>
+                            <option value="success">success</option>
+                            <option value="failed">failed</option>
+                            <option value="cancelled">cancelled</option>
+                        </select>
+                        <label class="sr-only" for="tlGroup">Colour by</label>
+                        <select class="ctrl-select" id="tlGroup" data-state="group">
+                            <option value="workflow">colour by workflow</option>
+                            <option value="repo">colour by repo</option>
+                            <option value="status">colour by status</option>
+                        </select>
+                    </div>
+
+                    <div class="card section">
+                        <div class="section-head">
+                            <span class="card-title" style="margin-bottom:0;">start time vs runtime</span>
+                            <span class="section-sub">each dot is one run</span>
+                        </div>
+                        <div class="legend" id="tlScatterLegend" style="margin-bottom:12px;"></div>
+                        <div class="chart-wrap" style="height:320px;">
+                            <canvas id="tlScatterChart" role="img"
+                                aria-label="Scatter plot: run start time on the x axis, runtime in minutes on the y axis"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card section">
+                        <div class="section-head">
+                            <span class="card-title" style="margin-bottom:0;">runtime trend per workflow</span>
+                            <span class="section-sub">daily average of successful runs</span>
+                        </div>
+                        <div class="legend" id="tlSwimLegend" style="margin-bottom:12px;"></div>
+                        <div class="chart-wrap" style="height:280px;">
+                            <canvas id="tlSwimChart" role="img"
+                                aria-label="Daily average runtime per workflow"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="two-col section">
+                        <div class="card">
+                            <div class="card-title">cumulative runtime by repo</div>
+                            <div class="chart-wrap" style="height:220px;">
+                                <canvas id="tlCumRepoChart" role="img"
+                                    aria-label="Total compute minutes per repository"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">runtime distribution</div>
+                            <div class="chart-wrap" style="height:220px;">
+                                <canvas id="tlHistChart" role="img"
+                                    aria-label="Histogram of run durations"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card section">
+                        <div class="section-head">
+                            <span class="card-title" style="margin-bottom:0;">longest individual runs</span>
+                            <span class="section-sub">top 20 by duration</span>
+                        </div>
+                        <div class="runs-table-wrap">
+                            <table class="runs-table">
+                                <caption class="sr-only">The twenty longest runs in the selected window</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">workflow</th>
+                                        <th scope="col">repository</th>
+                                        <th scope="col">branch</th>
+                                        <th scope="col">status</th>
+                                        <th scope="col">started</th>
+                                        <th scope="col">duration</th>
+                                        <th scope="col">vs median</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tlLongestBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </div><!-- /content -->
+        </main>
+    </div><!-- /layout -->
+
+    <!-- ── Run logs modal ── -->
+    <div class="log-modal" id="logModal" role="dialog" aria-modal="true" aria-labelledby="logTitle" hidden>
+        <div class="log-backdrop" id="logBackdrop"></div>
+        <div class="log-panel">
+            <div class="log-head">
+                <div class="log-head-row">
+                    <h2 class="log-title" id="logTitle">run logs</h2>
+                    <button class="log-close" id="logClose" type="button" aria-label="Close logs">✕</button>
+                </div>
+                <div class="log-meta" id="logMeta"></div>
+            </div>
+            <div class="log-body" id="logBody"></div>
+            <div class="log-foot" id="logFoot"></div>
+        </div>
+    </div>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
+    <div class="sr-only" id="liveAnnouncer" role="status" aria-live="polite"></div>
+    <!--@buildstamp-->
+
+    <!--@script-->
+</body>
+
+</html>

@@ -1,0 +1,33 @@
+{
+  "name": "github-action-monitor",
+  "version": "2.0.0",
+  "description": "Cross-repository monitoring, analytics and log forensics for GitHub Actions, as a single static page.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/illusionist-creator/github_action_monitor.git"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "test:unit": "node --test tests/units.test.mjs tests/security.test.mjs",
+    "serve": "node --run build && node -e \"import('node:http').then(({default:h})=>import('node:fs').then(({default:f})=>h.createServer((q,s)=>{s.setHeader('content-type','text/html');s.end(f.readFileSync('index.html'))}).listen(8080,()=>console.log('http://localhost:8080'))))\"",
+    "verify": "node --run check && node --run test"
+  },
+  "devDependencies": {
+    "jsdom": "^27.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "github-actions",
+    "ci",
+    "dashboard",
+    "observability",
+    "monitoring"
+  ]
+}
