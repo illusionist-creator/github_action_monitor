@@ -1,4 +1,9 @@
 node_modules/
+
+# Build output staged for a host; index.html at the root is the committed artifact
+public/
+_site/
+.vercel/
 shots/
 *.log
 .DS_Store
@@ -6,3 +11,4 @@ Thumbs.db
 .idea/
 .vscode/
 .env
+.vercel

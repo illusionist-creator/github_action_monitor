@@ -14,7 +14,7 @@
 // silently emitting broken output.
 
 import { createHash } from 'node:crypto';
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -209,7 +209,14 @@ function sha(text) {
   return createHash('sha256').update(text).digest('hex').slice(0, 12);
 }
 
-const check = process.argv.includes('--check');
+const argv = process.argv.slice(2);
+const check = argv.includes('--check');
+// `--site <dir>` also stages a deploy directory. Vercel and GitHub Pages both
+// insist on serving from a directory rather than a repo root, and serving the
+// root would publish src/, tests/ and package.json alongside the page.
+const siteFlag = argv.indexOf('--site');
+const siteDir = siteFlag === -1 ? null : (argv[siteFlag + 1] || 'public');
+
 const output = await build();
 
 if (check) {
@@ -219,7 +226,7 @@ if (check) {
   } catch {
     /* not built yet */
   }
-  if (current.replace(/\r\n/g, '\n') !== output.replace(/\r\n/g, '\n')) {
+  if (current !== output) {
     console.error('index.html is out of date. Run `node build.mjs` and commit the result.');
     process.exit(1);
   }
@@ -228,4 +235,13 @@ if (check) {
   await writeFile(OUTPUT, output, 'utf8');
   const kb = (Buffer.byteLength(output) / 1024).toFixed(0);
   console.log(`Wrote index.html (${kb} KB)`);
+
+  if (siteDir) {
+    const dir = join(ROOT, siteDir);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'index.html'), output, 'utf8');
+    // Same page for any path, so a stale deep link still lands on the dashboard.
+    await writeFile(join(dir, '404.html'), output, 'utf8');
+    console.log(`Staged ${siteDir}/index.html and ${siteDir}/404.html`);
+  }
 }

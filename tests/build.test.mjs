@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -73,6 +73,30 @@ describe('build', () => {
       .replace(/<style>[\s\S]*?<\/style>/g, '');
     const externals = markup.match(/(?:src|href)="(?!https:|data:|#)[^"]+"/g) || [];
     assert.deepEqual(externals, [], `unexpected local asset reference: ${externals.join(', ')}`);
+  });
+
+  it('stages a deploy directory with --site', () => {
+    // Vercel and Pages both serve a directory, not a repo root. Without this,
+    // Vercel detects package.json, runs the build, then fails with
+    // 'No Output Directory named "public" found'.
+    const dir = join(ROOT, '.tmp-site');
+    execFileSync(process.execPath, [join(ROOT, 'build.mjs'), '--site', '.tmp-site'], { cwd: ROOT });
+
+    const page = readFileSync(join(dir, 'index.html'), 'utf8');
+    assert.equal(page, readFileSync(OUTPUT, 'utf8'), 'staged page differs from the artifact');
+    assert.equal(
+      readFileSync(join(dir, '404.html'), 'utf8'),
+      page,
+      'a stale deep link should still land on the dashboard',
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('the Vercel config points at the directory the build actually writes', () => {
+    const config = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'));
+    const target = config.buildCommand.match(/--site\s+(\S+)/);
+    assert.ok(target, 'buildCommand should stage a site directory');
+    assert.equal(target[1], config.outputDirectory);
   });
 
   it('rejects a module form the transform cannot handle', () => {

@@ -38,14 +38,9 @@ jobs:
 
       # build.mjs has no dependencies, so this job needs no install step —
       # it cannot be broken by a devDependency that only the tests use.
+      # `--site` stages the deploy directory, the same way Vercel builds it.
       - name: Build fresh rather than trusting the committed artifact
-        run: node build.mjs
-
-      - name: Stage the single file
-        run: |
-          mkdir -p _site
-          cp index.html _site/index.html
-          cp index.html _site/404.html
+        run: node build.mjs --site _site
 
       - uses: actions/configure-pages@v5
 
