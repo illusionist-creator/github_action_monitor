@@ -24,7 +24,7 @@ open index.html          # macOS · `start index.html` on Windows · `xdg-open` 
 | **All runs** | Every run in the window, filterable and paged. |
 | **Failures** | Failure categories, flaky vs sticky failures, and the details of each recent failure. |
 | **Run logs** | The newest run in every repository, expanded to jobs, steps and failure annotations. |
-| **Timeline** | Start time vs runtime scatter, per-workflow runtime trends, duration histogram, longest runs. |
+| **Timeline** | Start time vs runtime line chart, per-workflow runtime trends, duration histogram, longest runs. |
 
 Any filtered view is shareable: the tab, repository, window and filters live in
 the URL hash, so `#tab=failures&repo=acme%2Fapi&days=30` opens exactly what you

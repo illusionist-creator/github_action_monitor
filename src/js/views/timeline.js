@@ -50,26 +50,29 @@ function colorsFor(runs, state, groupOf) {
 function renderScatter(runs, state, groupOf) {
   const { keys, map } = colorsFor(runs, state, groupOf);
 
-  // `showLine: false` is the fix for the original chart: it declared
-  // `type: 'line'` and drew a connecting line through every point, so what the
-  // card called a scatter plot was an unreadable tangle.
+  // Each series must be sorted by start time before it is joined: a line
+  // through unsorted points doubles back across the window and reads as noise,
+  // which is how the very first version of this chart shipped.
   const datasets = keys.filter((k) => k !== 'other').map((key) => ({
     label: key,
-    showLine: false,
-    data: runs.filter((run) => groupOf(run) === key).map((run) => ({
-      x: run.ts,
-      y: toMinutes(run.dur),
-      run,
-    })),
+    data: runs.filter((run) => groupOf(run) === key)
+      .map((run) => ({
+        x: run.ts,
+        y: toMinutes(run.dur),
+        run,
+      }))
+      .sort((a, b) => a.x - b.x),
     backgroundColor: withAlpha(map.get(key) || '#767c8b', 0.8),
     borderColor: map.get(key) || '#767c8b',
-    pointRadius: 4,
+    pointRadius: 3,
     pointHoverRadius: 8,
-    borderWidth: 1,
+    borderWidth: 2,
+    tension: 0.3,
+    fill: false,
   }));
 
   chart('tlScatterChart', {
-    type: 'scatter',
+    type: 'line',
     data: { datasets },
     options: {
       responsive: true,
@@ -113,6 +116,7 @@ function renderScatter(runs, state, groupOf) {
       label: state.group === 'repo' ? repoShortName(key) : truncate(key, 24),
       color: map.get(key) || '#767c8b',
     })),
+    { shape: 'line' },
   ));
 }
 

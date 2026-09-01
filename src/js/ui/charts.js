@@ -2,9 +2,9 @@
 //
 // Three things the legacy chart code got wrong, all fixed here:
 //
-//   * the "scatter" on the Timeline tab was `type: 'line'` without
-//     `showLine: false`, so Chart.js joined every point — a tangle of lines
-//     across the whole window, presented as a scatter plot;
+//   * the "start time vs runtime" line on the Timeline tab joined points that
+//     were never sorted by time, so its lines doubled back across the whole
+//     window — each series is now sorted chronologically before it is drawn;
 //   * charts were created against canvases inside a `display:none` tab, so
 //     Chart.js measured 0x0 and silently drew nothing until a resize;
 //   * if the CDN was unreachable, `new Chart(...)` threw and the whole render
