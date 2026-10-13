@@ -71,6 +71,12 @@ export function fmtTime(timestamp) {
   return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+/** "7 days" / "24 hours", for copy that names the active window. */
+export function windowLabel(days) {
+  const n = Number(days);
+  return n === 1 ? '24 hours' : `${n} days`;
+}
+
 export function fmtNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n.toLocaleString() : '—';

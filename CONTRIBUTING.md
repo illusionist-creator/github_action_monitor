@@ -43,8 +43,10 @@ has already had.
 | A metric or aggregate | `src/js/data/analytics.js` — add a test in `tests/units.test.mjs` |
 | How the API is called | `src/js/data/api.js` (endpoints) or `data/github.js` (transport, retries, rate limits) |
 | A chart | the relevant `src/js/views/*.js`; keep the `dataTable` fallback in step |
-| A colour | `src/js/lib/palette.js`, never a raw hex in a view |
+| A colour | `src/js/lib/palette.js` for data; `src/styles/tokens.css` for chrome, in both schemes |
 | Layout or component styling | `src/styles/` — add new files to the order list in `build.mjs` |
+| An icon | add a `<symbol>` to the sprite in `src/index.html` and its name to `ui/icons.js` |
+| A palette command or keyboard shortcut | `paletteItems()` and the keydown handler in `src/js/app.js`, plus the shortcuts dialog in `src/index.html` |
 
 ## Adding a chart
 
@@ -74,5 +76,9 @@ it.
 - `tests/security.test.mjs` — escaping regressions. Add a payload here whenever
   you touch a render path.
 - `tests/smoke.test.mjs` — boots the built `index.html` in jsdom and drives it.
+- `tests/chrome.test.mjs` — the same, for the verdict strip, theme toggle,
+  command palette, run search and connect dialog.
+- `tests/features.test.mjs` — pure logic behind those: deltas, search, sort,
+  CSV, palette ranking.
 
 Run one file with `node --test tests/units.test.mjs`.

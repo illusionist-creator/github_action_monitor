@@ -1,10 +1,10 @@
-// Job / step breakdown, shown both in the slide-over modal and the Run Logs tab.
+// Job / step breakdown, shown both in the slide-over and the Run Logs tab.
 
 import { attachAnnotations, fetchJobLog, fetchRunDetail, fetchRunJobs } from '../data/api.js';
-import { html, raw, setHtml } from '../lib/dom.js';
+import { html, setHtml } from '../lib/dom.js';
 import { fmtDateTime, fmtDuration, timeAgo, truncate } from '../lib/format.js';
-import { entityColor, statusColor, statusIcon } from '../lib/palette.js';
-import { emptyState, repoAvatar, statusBadge } from '../ui/components.js';
+import { emptyState, repoAvatar, repoName, statusBadge } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import { closeModal, openModal } from '../ui/modal.js';
 
 const JOB_STATE_COLORS = {
@@ -12,9 +12,9 @@ const JOB_STATE_COLORS = {
   failure: 'var(--red)',
   timed_out: 'var(--red)',
   cancelled: 'var(--amber)',
-  skipped: 'var(--text3)',
+  skipped: 'var(--text-3)',
   in_progress: 'var(--blue)',
-  queued: 'var(--text3)',
+  queued: 'var(--text-3)',
 };
 
 const STEP_ICONS = {
@@ -58,17 +58,16 @@ export async function openRunLogs(run, ctx) {
   const token = (modalToken += 1);
   openModal('logModal', { initialFocus: '#logClose' });
 
-  setHtml('logTitle', html`${run.wf} <span style="color:${statusColor(run.status)};font-size:12px;">● ${run.status.replace('_', ' ')}</span>`);
+  setHtml('logTitle', html`<span class="truncate">${run.wf}</span>${statusBadge(run.status)}`);
   setHtml('logMeta', metaRow(run, null));
   setHtml('logFoot', html``);
-  setHtml('logBody', html`<div class="log-note"><span class="log-spin"></span>&nbsp; loading job breakdown…</div>`);
+  setHtml('logBody', html`<div class="log-note"><span class="log-spin"></span>&nbsp; Loading the job breakdown…</div>`);
 
   if (!isRealRun(run)) {
     setHtml('logBody', html`
       <div class="log-banner demo">
         This is sample data, so there is no real run behind it. Connect a token
-        in the sidebar and the job and step breakdown here will come straight
-        from the Actions API.
+        and the job and step breakdown here will come straight from the Actions API.
       </div>
     `);
     return;
@@ -103,7 +102,7 @@ export async function openRunLogs(run, ctx) {
         <br /><br />
         Usually this means the token lacks <b>actions:read</b> on this repository,
         the run was deleted, or its logs are past the retention window.
-        ${url ? html`<br /><br /><a href="${url}" target="_blank" rel="noopener noreferrer">Open this run on GitHub ↗</a>` : ''}
+        ${url ? html`<br /><br /><a href="${url}" target="_blank" rel="noopener noreferrer">Open this run on GitHub ${icon('external', 12)}</a>` : ''}
       </div>
     `);
   }
@@ -130,16 +129,16 @@ function metaRow(run, detail) {
       bits.push(['actor', detail.triggering_actor.login]);
     }
   }
-  return html`${bits.map(([label, value]) => html`<span><b>${label}</b> ${value}</span>`)}`;
+  return html`${bits.map(([label, value]) => html`<span><b>${label}</b> <span class="mono">${value}</span></span>`)}`;
 }
 
 function footer(run) {
   const url = runUrl(run);
   if (!url) return html``;
   return html`
-    <a href="${url}" target="_blank" rel="noopener noreferrer">Open full run on GitHub ↗</a>
+    <a href="${url}" target="_blank" rel="noopener noreferrer">Open the full run on GitHub ${icon('external', 12)}</a>
     <span style="opacity:.4">|</span>
-    <span>step timings come from the Actions API</span>
+    <span>Step timings come from the Actions API</span>
   `;
 }
 
@@ -164,12 +163,12 @@ export function jobsMarkup(run, jobs, idPrefix) {
     return html`
       <div class="log-job ${open ? 'open' : ''}" id="${id}">
         <button class="log-job-head" type="button" data-job-toggle="${id}" aria-expanded="${open ? 'true' : 'false'}">
-          <span class="log-caret" aria-hidden="true">▶</span>
-          <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${JOB_STATE_COLORS[state] || 'var(--text3)'};"></span>
-          <div style="flex:1;min-width:0;">
+          <span class="log-caret" aria-hidden="true">${icon('chevron-right', 14)}</span>
+          <span class="status-dot" style="background:${JOB_STATE_COLORS[state] || 'var(--text-3)'};"></span>
+          <div class="grow">
             <div class="log-job-name">${job.name || 'job'}</div>
             <div class="log-job-sub">
-              ${state}${steps.length ? ` · ${steps.length} step${steps.length === 1 ? '' : 's'}` : ''}${failedSteps ? html` · <span style="color:var(--red)">${failedSteps} failed</span>` : ''}${duration !== null ? ` · ${fmtDuration(duration)}` : ''}${job.runner_name ? ` · ${job.runner_name}` : ''}
+              ${state}${steps.length ? ` · ${steps.length} step${steps.length === 1 ? '' : 's'}` : ''}${failedSteps ? html` · <span class="text-bad">${failedSteps} failed</span>` : ''}${duration !== null ? ` · ${fmtDuration(duration)}` : ''}${job.runner_name ? ` · ${job.runner_name}` : ''}
             </div>
           </div>
         </button>
@@ -194,7 +193,7 @@ function stepRow(step) {
   return html`
     <div class="log-step ${cls}">
       <span class="log-step-num">${step.number ?? ''}</span>
-      <span style="flex-shrink:0;width:12px;" aria-hidden="true">${STEP_ICONS[state] || '·'}</span>
+      <span class="log-step-icon" aria-hidden="true">${STEP_ICONS[state] || '·'}</span>
       <span class="log-step-name">${step.name || ''}</span>
       <span class="log-step-dur">${duration === null ? '' : fmtDuration(duration)}</span>
     </div>
@@ -215,8 +214,8 @@ function annotationRow(a) {
 function rawLogControl(run, job, targetId) {
   return html`
     <div class="log-raw-wrap">
-      <button class="logs-mini" type="button" data-raw-log="${targetId}"
-        data-repo="${run.repo}" data-job="${job.id}">load raw log text</button>
+      <button class="btn btn-xs" type="button" data-raw-log="${targetId}"
+        data-repo="${run.repo}" data-job="${job.id}">${icon('download', 12)} Load raw log text</button>
       <div id="${targetId}" style="margin-top:8px;"></div>
     </div>
   `;
@@ -224,7 +223,7 @@ function rawLogControl(run, job, targetId) {
 
 /* ------------------------------------------------------------- raw log text */
 
-const ANSI = /\[[0-9;?]*[ -/]*[@-~]/g;
+const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?/;
 const MAX_LINES = 800;
 
@@ -249,14 +248,14 @@ export function renderRawLog(target, text) {
 
   setHtml(target, html`
     ${all.length > MAX_LINES
-      ? html`<div class="log-note" style="margin-bottom:6px;">showing the last ${MAX_LINES} of ${all.length} lines</div>`
+      ? html`<div class="log-note" style="margin-bottom:6px;">Showing the last ${MAX_LINES} of ${all.length} lines</div>`
       : ''}
     <div class="log-raw">${body}</div>
   `);
 }
 
 export async function loadRawLog(target, ctx, repo, jobId) {
-  setHtml(target, html`<div class="log-note"><span class="log-spin"></span>&nbsp; requesting raw log…</div>`);
+  setHtml(target, html`<div class="log-note"><span class="log-spin"></span>&nbsp; Requesting the raw log…</div>`);
   try {
     const text = await fetchJobLog(ctx.client, repo, jobId);
     renderRawLog(target, text);
@@ -273,7 +272,7 @@ export async function loadRawLog(target, ctx, repo, jobId) {
         comes from the JSON API and is unaffected.
         <br /><br />
         <b>From a terminal:</b>
-        <code class="log-raw" style="display:block;margin-top:6px;padding:8px;">gh run view --repo ${repo} --job ${jobId} --log</code>
+        <code class="log-raw">gh run view --repo ${repo} --job ${jobId} --log</code>
         <br />
         <b>Reported:</b> ${err.message}
       </div>
@@ -308,7 +307,7 @@ export function renderLogsTab(ctx) {
   ctx.logRows = rows;
 
   if (!rows.length) {
-    setHtml('logsRepoList', emptyState('Nothing to show', 'No repository matched this filter.'));
+    setHtml('logsRepoList', emptyState('Nothing to show', 'No repository matched this filter.', { icon: 'filter' }));
     setHtml('logsProgress', html``);
     return;
   }
@@ -319,13 +318,13 @@ export function renderLogsTab(ctx) {
     return html`
       <div class="rlog-card st-${run.status} ${open ? 'open' : ''}" id="rlog-${i}">
         <button class="rlog-head" type="button" data-log-toggle="${i}" aria-expanded="${open ? 'true' : 'false'}">
-          <span class="log-caret" aria-hidden="true">▶</span>
-          ${repoAvatar(run.repo, { size: 28 })}
+          <span class="log-caret" aria-hidden="true">${icon('chevron-right', 14)}</span>
+          ${repoAvatar(run.repo, { size: 30 })}
           <div class="rlog-main">
-            <div class="rlog-repo">${run.repo}</div>
+            <div class="rlog-repo">${repoName(run.repo)}</div>
             <div class="rlog-sub">
-              <span style="color:var(--text2);">${run.wf}</span>
-              <span>${truncate(run.branch, 22)}</span>
+              <span class="wf">${run.wf}</span>
+              <span class="mono">${truncate(run.branch, 22)}</span>
               <span>${fmtDuration(run.dur)}${run.status === 'in_progress' ? ' elapsed' : ''}</span>
               <span>${timeAgo(run.startedAt || run.ts)}</span>
             </div>
@@ -333,7 +332,7 @@ export function renderLogsTab(ctx) {
           <div class="rlog-right">${statusBadge(run.status)}</div>
         </button>
         <div class="rlog-body" id="rlogbody-${i}">
-          ${open && cached ? jobsMarkup(run, cached.jobs, `tab${i}`) : html`<div class="log-note">not loaded yet</div>`}
+          ${open && cached ? jobsMarkup(run, cached.jobs, `tab${i}`) : html`<div class="log-note">Not loaded yet — expand to fetch.</div>`}
         </div>
       </div>
     `;
@@ -342,7 +341,7 @@ export function renderLogsTab(ctx) {
   const loaded = rows.filter((run) => logCache.has(runKey(run))).length;
   const failing = rows.filter((run) => run.status === 'failed').length;
   setHtml('logsProgress', html`
-    ${loaded}/${rows.length} loaded${failing ? html` · <span style="color:var(--red)">${failing} last run failed</span>` : ''}
+    ${loaded}/${rows.length} loaded${failing ? html` · <span class="text-bad">${failing} last run${failing === 1 ? '' : 's'} failed</span>` : ''}
   `);
 }
 
@@ -354,10 +353,10 @@ export async function loadLogsFor(run, ctx, targetId) {
     return;
   }
   if (!isRealRun(run)) {
-    setHtml(targetId, html`<div class="log-banner demo">Sample data — no real run behind this row.</div>`);
+    setHtml(targetId, html`<div class="log-banner demo">Sample data — there is no real run behind this row.</div>`);
     return;
   }
-  setHtml(targetId, html`<div class="log-note"><span class="log-spin"></span>&nbsp; fetching…</div>`);
+  setHtml(targetId, html`<div class="log-note"><span class="log-spin"></span>&nbsp; Fetching…</div>`);
   try {
     const jobs = await fetchRunJobs(ctx.client, run.repo, run.id);
     logCache.set(key, { detail: null, jobs });

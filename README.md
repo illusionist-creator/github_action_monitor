@@ -26,9 +26,33 @@ open index.html          # macOS · `start index.html` on Windows · `xdg-open` 
 | **Run logs** | The newest run in every repository, expanded to jobs, steps and failure annotations. |
 | **Timeline** | Start time vs runtime line chart, per-workflow runtime trends, duration histogram, longest runs. |
 
+The **Overview** opens with a verdict — *All systems green*, *Mostly healthy*,
+or *2 repositories need attention* — with the reasons as chips you can click
+straight through to. Every headline number carries its change against the
+previous window and a per-day trend line, so "84%" reads as "84%, down 8 points
+on last week" rather than a bare figure.
+
 Any filtered view is shareable: the tab, repository, window and filters live in
 the URL hash, so `#tab=failures&repo=acme%2Fapi&days=30` opens exactly what you
 were looking at.
+
+## Getting around
+
+- **Command palette** — `Ctrl`/`⌘` `K`, or `/`, jumps to a view, focuses a
+  repository, changes the window, refreshes, switches theme or opens the
+  connect dialog. Type a few letters; prefix matches rank first.
+- **Keyboard** — `1`–`7` switch views, `r` refreshes, `t` toggles the theme,
+  `c` opens the connect dialog, `?` lists everything. `Enter` on any run row
+  opens its jobs and steps.
+- **Theme** — follows your OS and flips with `t` or the sun/moon button. The
+  choice lasts for the tab and is deliberately not remembered; see below.
+- **All runs** — a free-text filter across workflow, repository, branch, actor
+  and commit; sortable columns; **Export CSV** writes the filtered set with
+  spreadsheet formula characters neutralised.
+- **Repositories** — each row's health ring expands into its three weighted
+  scores, the workflows behind them, and a one-click focus on that repository.
+- **Small screens** — the sidebar becomes a drawer, controls wrap, and tables
+  scroll sideways.
 
 ## Connecting your own data
 
@@ -55,6 +79,9 @@ Paste a token in the sidebar. Optionally narrow the scope to one owner
   existed.
 - "Disconnect" clears the token, aborts in-flight requests and drops every
   cached response.
+- The same rule covers everything else: the theme toggle is not remembered
+  either, because the cost of one storage API in the source is the guarantee
+  above.
 
 Closing the tab is a complete logout.
 
@@ -94,14 +121,20 @@ src/index.html          markup + the <!--@styles--> / <!--@script--> markers
 src/styles/*.css        tokens · base · layout · components · views
 src/js/lib/             dom (escaping), format, palette, store
 src/js/data/            github (transport), api (endpoints), normalize, analytics, demo
-src/js/ui/              charts, components, modal, toast
-src/js/views/           overview, live, repos, runs, failures, timeline, logs
+src/js/ui/              charts, components, icons, theme, command (palette), modal, toast
+src/js/views/           overview, live, runs, failures, timeline, logs
 ```
+
+Icons are a `<symbol>` sprite at the top of `src/index.html`; `ui/icons.js`
+emits a `<use>` of one by name, so an icon costs a few bytes wherever it
+appears and recolours with `currentColor`. Chart chrome (ticks, grid,
+tooltips) is read from the CSS tokens, which is what lets the charts follow
+the light/dark scheme.
 
 ```bash
 npm install       # jsdom, for the DOM smoke tests — nothing ships to the browser
 npm run build     # src/ -> index.html
-npm test          # 98 tests: units, security, build, and a real-DOM smoke suite
+npm test          # 111 tests: units, security, build, and a real-DOM smoke suite
 npm run check     # fail if index.html has drifted from src/
 ```
 
@@ -179,9 +212,11 @@ replacing it, so the chart returns by itself the moment it can be drawn again.
 ## Accessibility
 
 Navigation is a real ARIA tablist with roving arrow-key focus; every clickable
-card and row is a button reachable by keyboard; the log dialog traps focus and
-restores it on close; status is conveyed by colour *and* an icon *and* a word;
-charts carry data-table equivalents; `prefers-reduced-motion` disables every
+card and row is a button reachable by keyboard; every dialog — run logs, the
+command palette, connect, shortcuts — traps focus and restores it on close;
+the palette is a combobox over a listbox; status is conveyed by colour *and*
+an icon *and* a word; charts carry data-table equivalents; both colour schemes
+keep text at 4.5:1 or better; `prefers-reduced-motion` disables every
 animation and chart transition; and there is a skip link to the content.
 
 ## Browser support

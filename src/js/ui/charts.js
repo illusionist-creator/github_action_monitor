@@ -12,11 +12,26 @@
 //
 // Every chart here degrades to an accessible data table when Chart.js is
 // missing, which doubles as the table view the charts need anyway.
+//
+// Chart chrome (ticks, grid, tooltip) is read from the CSS tokens, so charts
+// follow the light/dark scheme. `initChartDefaults()` is called again whenever
+// the scheme changes and the active tab is redrawn.
 
-import { esc, html, raw, setHtml } from '../lib/dom.js';
+import { html, raw, setHtml } from '../lib/dom.js';
 
 const registry = new Map();
 const observers = new Map();
+
+const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
+const FALLBACK_THEME = {
+  text: '#eef0f4',
+  text2: '#a4abb8',
+  tick: '#727a89',
+  grid: 'rgba(255,255,255,0.06)',
+  surface3: '#1f232b',
+  borderStrong: 'rgba(255,255,255,0.14)',
+};
+let theme = { ...FALLBACK_THEME };
 
 export function chartsAvailable() {
   return typeof globalThis.Chart !== 'undefined';
@@ -25,13 +40,38 @@ export function chartsAvailable() {
 const reduceMotion = () => typeof matchMedia === 'function'
   && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/** Shared axis / grid / font defaults, applied once. */
+function readTheme() {
+  const out = { ...FALLBACK_THEME };
+  if (typeof document === 'undefined' || typeof getComputedStyle !== 'function') return out;
+  let css;
+  try {
+    css = getComputedStyle(document.documentElement);
+  } catch {
+    return out;
+  }
+  const tokens = {
+    text: '--text',
+    text2: '--text-2',
+    tick: '--tick',
+    grid: '--grid',
+    surface3: '--surface-3',
+    borderStrong: '--border-strong',
+  };
+  Object.entries(tokens).forEach(([key, name]) => {
+    const value = css.getPropertyValue(name).trim();
+    if (value) out[key] = value;
+  });
+  return out;
+}
+
+/** Shared axis / grid / font defaults. Safe to call again after a theme change. */
 export function initChartDefaults() {
+  theme = readTheme();
   if (!chartsAvailable()) return;
   const { Chart } = globalThis;
-  Chart.defaults.color = '#8b909e';
-  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
-  Chart.defaults.font.family = "'JetBrains Mono', ui-monospace, monospace";
+  Chart.defaults.color = theme.text2;
+  Chart.defaults.borderColor = theme.grid;
+  Chart.defaults.font.family = FONT;
   Chart.defaults.font.size = 11;
   // Set the duration on the existing descriptor rather than replacing it.
   // `Chart.defaults.animation = {duration}` drops the keys Chart.js resolves
@@ -41,12 +81,18 @@ export function initChartDefaults() {
   // "this._fn is not a function" from inside its animation loop.
   if (reduceMotion()) Chart.defaults.animation = false;
   else if (Chart.defaults.animation) Chart.defaults.animation.duration = 400;
-  Chart.defaults.plugins.tooltip.backgroundColor = '#1a1e25';
-  Chart.defaults.plugins.tooltip.borderColor = 'rgba(255,255,255,0.12)';
-  Chart.defaults.plugins.tooltip.borderWidth = 1;
-  Chart.defaults.plugins.tooltip.padding = 10;
-  Chart.defaults.plugins.tooltip.titleColor = '#e8eaf0';
-  Chart.defaults.plugins.tooltip.bodyColor = '#c9ccd6';
+
+  const tooltip = Chart.defaults.plugins.tooltip;
+  tooltip.backgroundColor = theme.surface3;
+  tooltip.borderColor = theme.borderStrong;
+  tooltip.borderWidth = 1;
+  tooltip.padding = 10;
+  tooltip.cornerRadius = 8;
+  tooltip.titleColor = theme.text;
+  tooltip.bodyColor = theme.text2;
+  tooltip.titleFont = { family: FONT, size: 12, weight: '600' };
+  tooltip.bodyFont = { family: FONT, size: 11.5 };
+  tooltip.boxPadding = 4;
   // Legends are rendered as real DOM next to each chart, so identity survives
   // a screenshot, a screen reader and a printed page.
   Chart.defaults.plugins.legend.display = false;
@@ -57,7 +103,7 @@ export function axis({ callback, stacked = false, beginAtZero = true, grid = tru
   // `callback` must be omitted rather than set to undefined: Chart.js treats the
   // key's presence as an override and stops falling back to its own formatter,
   // which renders every category tick as its numeric index.
-  const tickOptions = { color: '#767c8b', font: { size: 10 }, maxRotation: 0, autoSkipPadding: 12, ...ticks };
+  const tickOptions = { color: theme.tick, font: { size: 10.5 }, maxRotation: 0, autoSkipPadding: 12, ...ticks };
   if (callback) tickOptions.callback = callback;
 
   return {
@@ -65,9 +111,9 @@ export function axis({ callback, stacked = false, beginAtZero = true, grid = tru
     beginAtZero,
     border: { display: false },
     ticks: tickOptions,
-    grid: { color: grid ? 'rgba(255,255,255,0.05)' : 'transparent', drawTicks: false },
+    grid: { color: grid ? theme.grid : 'transparent', drawTicks: false },
     title: title
-      ? { display: true, text: title, color: '#767c8b', font: { size: 10 } }
+      ? { display: true, text: title, color: theme.tick, font: { size: 10.5 } }
       : { display: false },
   };
 }
@@ -208,8 +254,8 @@ function clearFallback(canvas) {
 /** The table view. Also reachable on purpose, not only as an error path. */
 export function dataTable({ columns, rows, caption }, note) {
   return html`
-    <div class="runs-table-wrap" style="max-height:100%;">
-      <table class="runs-table">
+    <div class="table-wrap" style="max-height:100%;">
+      <table class="table">
         <caption class="sr-only">${caption || 'Chart data'}</caption>
         <thead>
           <tr>${columns.map((col) => html`<th scope="col">${col}</th>`)}</tr>
@@ -218,7 +264,7 @@ export function dataTable({ columns, rows, caption }, note) {
           ${rows.map((row) => html`<tr>${row.map((cell) => html`<td>${cell}</td>`)}</tr>`)}
         </tbody>
       </table>
-      ${note ? html`<div class="section-sub" style="margin-top:8px;">${note}</div>` : ''}
+      ${note ? html`<div class="card-sub" style="margin-top:8px;">${note}</div>` : ''}
     </div>
   `;
 }

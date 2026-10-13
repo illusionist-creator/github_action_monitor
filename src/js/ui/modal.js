@@ -76,3 +76,8 @@ export function closeModal() {
 export function isModalOpen() {
   return openDialog !== null;
 }
+
+/** The id of the dialog currently open, or null. */
+export function activeModalId() {
+  return openDialog ? openDialog.id : null;
+}

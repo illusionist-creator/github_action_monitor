@@ -20,9 +20,9 @@ describe('dashboard boot', () => {
   it('renders the headline metrics from sample data', () => {
     const cards = app.document.querySelectorAll('#metricsRow .metric-card');
     assert.ok(cards.length >= 6, `expected 6 metric cards, saw ${cards.length}`);
-    const labels = Array.from(cards).map((c) => c.querySelector('.metric-label').textContent);
-    assert.ok(labels.includes('success rate'));
-    assert.ok(labels.includes('median queue wait'));
+    const labels = Array.from(cards).map((c) => c.querySelector('.metric-label').textContent.trim());
+    assert.ok(labels.includes('Success rate'), `labels: ${labels.join(' | ')}`);
+    assert.ok(labels.includes('Median duration'), `labels: ${labels.join(' | ')}`);
   });
 
   it('lists repositories in the sidebar', () => {
@@ -102,7 +102,14 @@ describe('filters', () => {
 
     const after = app.document.querySelector('#metricsRow .metric-value').textContent;
     assert.notEqual(before, after);
-    assert.equal(app.document.querySelectorAll('#sidebar-repo-list .nav-item').length, 1);
+
+    // Every repository stays listed so you can move straight to another one;
+    // the one in focus is marked, not isolated.
+    const items = app.document.querySelectorAll('#sidebar-repo-list .nav-item');
+    assert.equal(items.length, 5);
+    const pressed = app.document.querySelectorAll('#sidebar-repo-list .nav-item[aria-pressed="true"]');
+    assert.equal(pressed.length, 1);
+    assert.equal(pressed[0].getAttribute('data-repo-filter'), 'acme/ml-pipeline');
   });
 });
 

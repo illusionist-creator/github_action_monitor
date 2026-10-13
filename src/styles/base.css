@@ -17,38 +17,109 @@ body {
     font-size: 14px;
     line-height: 1.5;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv11', 'ss01';
 }
 
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+h1,
+h2,
+h3 {
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
 }
 
-::-webkit-scrollbar-track {
-    background: var(--bg);
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--bg4);
-    border-radius: 3px;
-}
-
-/* Every interactive control was a <div onclick> in the original markup: not
- * focusable, not announced, and invisible to keyboard users. They are now real
- * buttons or role="tab" elements, and this makes the focus ring unmistakable. */
-:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
-    border-radius: 3px;
+p {
+    margin: 0;
 }
 
 button {
     font: inherit;
     color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
 }
 
 a {
-    color: var(--blue);
+    color: var(--blue-ink);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+input,
+select,
+textarea {
+    font: inherit;
+    color: inherit;
+}
+
+code,
+kbd,
+pre,
+.mono {
+    font-family: var(--mono);
+}
+
+code {
+    font-size: 0.92em;
+    background: var(--surface-3);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.tnum {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Inline SVG icons reference a <symbol> sprite in index.html, so each icon is
+ * a few bytes wherever it is used and recolours with `currentColor`. */
+svg.ic {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vertical-align: -0.15em;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--border-strong);
+}
+
+/* Every interactive control is a real button or role="tab" element, and this
+ * makes the focus ring unmistakable without showing it on mouse clicks. */
+:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 3px;
 }
 
 /* Visible only to assistive technology. Used for the live-region announcements
@@ -71,14 +142,14 @@ a {
     position: absolute;
     left: -9999px;
     top: 0;
-    z-index: 200;
-    background: var(--bg3);
+    z-index: 400;
+    background: var(--surface);
     color: var(--text);
     padding: 10px 16px;
-    border: 1px solid var(--border2);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius);
-    font-family: var(--mono);
-    font-size: 12px;
+    font-size: 13px;
+    box-shadow: var(--shadow-2);
 }
 
 .skip-link:focus {
@@ -86,15 +157,93 @@ a {
     top: 12px;
 }
 
+/* ---- Small utilities ---------------------------------------------------- */
+
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.text-good { color: var(--green-ink); }
+.text-bad { color: var(--red-ink); }
+.text-warn { color: var(--amber-ink); }
+.text-info { color: var(--blue-ink); }
+
+.tone-good { color: var(--green-ink); }
+.tone-warn { color: var(--amber-ink); }
+.tone-bad { color: var(--red-ink); }
+.tone-info { color: var(--blue-ink); }
+.tone-quiet { color: var(--text-3); }
+
+.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stack-sm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.grow {
+    flex: 1;
+    min-width: 0;
+}
+
+kbd,
+.kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 5px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    box-shadow: inset 0 -1px 0 var(--border);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-2);
+    line-height: 1;
+    white-space: nowrap;
+}
+
 @media print {
     .sidebar,
     .topbar-controls,
-    .skip-link {
+    .skip-link,
+    .sample-banner,
+    .toast-stack,
+    .scrim {
         display: none !important;
     }
 
     body {
         background: #fff;
         color: #000;
+    }
+
+    .app {
+        display: block;
+    }
+
+    .card,
+    .metric-card,
+    .verdict,
+    .repo-row {
+        break-inside: avoid;
+        box-shadow: none;
     }
 }

@@ -1,9 +1,9 @@
 import { dailyBuckets, percentile, topBy } from '../data/analytics.js';
 import { html, setHtml } from '../lib/dom.js';
 import { fmtDateTime, fmtDuration, repoShortName, toMinutes, truncate } from '../lib/format.js';
-import { STATUS_COLORS, assignColors, entityColor, statusColor, withAlpha } from '../lib/palette.js';
-import { axis, chart, legend } from '../ui/charts.js';
-import { emptyState, statusBadge } from '../ui/components.js';
+import { assignColors, entityColor, statusColor, withAlpha } from '../lib/palette.js';
+import { axis, chart, chartMessage, legend } from '../ui/charts.js';
+import { emptyState, repoChip, statusBadge } from '../ui/components.js';
 
 const HIST_EDGES = [0, 30, 60, 120, 300, 600, 900, 1800, 3600, Infinity];
 const HIST_LABELS = ['<30s', '30–60s', '1–2m', '2–5m', '5–10m', '10–15m', '15–30m', '30–60m', '>60m'];
@@ -14,7 +14,11 @@ export function renderTimeline(ctx) {
     && (state.status === 'all' || run.status === state.status));
 
   if (!runs.length) {
-    setHtml('tlLongestBody', html`<tr><td colspan="8">${emptyState('No runs match these filters')}</td></tr>`);
+    // Never overwrite a chart wrapper: message the canvases instead, so the
+    // charts return by themselves when the filters do.
+    ['tlScatterChart', 'tlSwimChart', 'tlCumRepoChart', 'tlHistChart']
+      .forEach((id) => chartMessage(id, 'No runs match these filters.'));
+    setHtml('tlLongestBody', html`<tr><td colspan="8">${emptyState('No runs match these filters', 'Try a wider window, or clear the workflow and status filters.', { icon: 'filter' })}</td></tr>`);
     setHtml('tlScatterLegend', html``);
     setHtml('tlSwimLegend', html``);
     return;
@@ -62,11 +66,11 @@ function renderScatter(runs, state, groupOf) {
         run,
       }))
       .sort((a, b) => a.x - b.x),
-    backgroundColor: withAlpha(map.get(key) || '#767c8b', 0.8),
+    backgroundColor: withAlpha(map.get(key) || '#767c8b', 0.85),
     borderColor: map.get(key) || '#767c8b',
     pointRadius: 3,
-    pointHoverRadius: 8,
-    borderWidth: 2,
+    pointHoverRadius: 7,
+    borderWidth: 1.5,
     tension: 0.3,
     fill: false,
   }));
@@ -136,8 +140,8 @@ function renderSwimlanes(runs, index, state) {
     borderColor: colors.get(name),
     backgroundColor: 'transparent',
     tension: 0.35,
-    pointRadius: 4,
-    pointHoverRadius: 8,
+    pointRadius: 3,
+    pointHoverRadius: 7,
     borderWidth: 2,
     spanGaps: true,
   }));
@@ -180,6 +184,7 @@ function renderCumulative(runs) {
         backgroundColor: entries.map((e) => entityColor(e.repo)),
         borderRadius: 4,
         borderSkipped: false,
+        maxBarThickness: 22,
       }],
     },
     options: {
@@ -235,19 +240,19 @@ function renderLongest(runs) {
 
   setHtml('tlLongestBody', html`${longest.map((run, i) => {
     const ratio = run.dur / median;
-    const color = ratio > 3 ? 'var(--red)' : ratio > 1.5 ? 'var(--amber)' : 'var(--green)';
+    const tone = ratio > 3 ? 'tone-bad' : ratio > 1.5 ? 'tone-warn' : 'tone-good';
     return html`
       <tr class="run-row" tabindex="0" role="button"
         data-run-repo="${run.repo}" data-run-id="${run.id}"
         aria-label="Open logs for ${run.wf} in ${run.repo}">
-        <td style="color:var(--text3)">${i + 1}</td>
-        <td style="color:var(--text)">${run.wf}</td>
-        <td style="color:${entityColor(run.repo)}">${run.repo}</td>
-        <td><code style="font-size:11px;color:var(--text3)">${truncate(run.branch, 22)}</code></td>
+        <td class="faint tnum">${i + 1}</td>
+        <td class="run-name"><span class="truncate" title="${run.wf}">${run.wf}</span></td>
+        <td>${repoChip(run.repo)}</td>
+        <td class="run-branch mono" title="${run.branch}">${truncate(run.branch, 22)}</td>
         <td>${statusBadge(run.status)}</td>
-        <td style="color:var(--text3)">${fmtDateTime(run.ts)}</td>
-        <td style="color:var(--amber);">${fmtDuration(run.dur)}</td>
-        <td style="color:${color};">${ratio.toFixed(1)}×</td>
+        <td class="faint">${fmtDateTime(run.ts)}</td>
+        <td class="tnum text-warn">${fmtDuration(run.dur)}</td>
+        <td class="vs-median ${tone}">${ratio.toFixed(1)}×</td>
       </tr>
     `;
   })}`);

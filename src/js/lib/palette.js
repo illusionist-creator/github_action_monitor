@@ -11,8 +11,23 @@
 //      worst adjacent CVD ΔE 8.4, worst adjacent normal-vision ΔE 19.3,
 //      all >= 3:1 contrast.
 
-/** The card surface charts are drawn on. Used to fake gaps between fills. */
-export const SURFACE = '#13161b';
+/** The dark card surface charts are drawn on. Used to fake gaps between fills. */
+export const SURFACE = '#111418';
+
+/**
+ * The card surface for the *current* theme, read from the CSS token so the
+ * gaps between doughnut segments and stacked bars match whichever scheme is
+ * active. Falls back to the dark surface outside a browser.
+ */
+export function surface() {
+  if (typeof document === 'undefined' || typeof getComputedStyle !== 'function') return SURFACE;
+  try {
+    const value = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();
+    return /^#[0-9a-f]{3,8}$/i.test(value) ? value : SURFACE;
+  } catch {
+    return SURFACE;
+  }
+}
 
 /** Categorical slots, in fixed order. Never cycle a 9th hue — fold to "other". */
 export const CATEGORICAL = [
@@ -32,8 +47,8 @@ export const CATEGORICAL = [
  * alone.
  */
 export const STATUS_COLORS = {
-  success: '#0ca30c',
-  failed: '#d03b3b',
+  success: '#15a34a',
+  failed: '#dc4343',
   cancelled: '#ec835a',
   skipped: '#8b909e',
   in_progress: '#3987e5',
@@ -123,6 +138,27 @@ export const SEQUENTIAL_BLUE = [
   '#2a78d6',
   '#3987e5',
 ];
+
+/** The same ramp for the light scheme: pale -> saturated, so empty still recedes. */
+export const SEQUENTIAL_BLUE_LIGHT = [
+  '#eceef2',
+  '#d6e4fb',
+  '#b3cdf6',
+  '#8cb2ef',
+  '#6497e7',
+  '#3f7ee0',
+  '#2160c4',
+];
+
+/** The sequential ramp for whichever scheme is active. */
+export function sequential() {
+  if (typeof document !== 'undefined'
+    && document.documentElement
+    && document.documentElement.getAttribute('data-theme') === 'light') {
+    return SEQUENTIAL_BLUE_LIGHT;
+  }
+  return SEQUENTIAL_BLUE;
+}
 
 /**
  * Assign colours to an ordered list of entities without ever repeating an

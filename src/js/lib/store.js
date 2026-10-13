@@ -136,6 +136,17 @@ export function selectRuns(runs, { days, repo }, now = Date.now()) {
   return runs.filter((run) => run.ts >= cutoff && (repo === 'all' || run.repo === repo));
 }
 
+/**
+ * The window immediately before the current one, same length and scope. The
+ * Overview compares against it so a number can say "up 3 points on last week"
+ * instead of standing alone.
+ */
+export function previousWindow(runs, { days, repo }, now = Date.now()) {
+  const end = now - days * 86400000;
+  const start = end - days * 86400000;
+  return runs.filter((run) => run.ts >= start && run.ts < end && (repo === 'all' || run.repo === repo));
+}
+
 export const WINDOW_PRESETS = [1, 7, 14, 30, 90];
 
 /**

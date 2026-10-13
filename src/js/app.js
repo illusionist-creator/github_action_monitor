@@ -5,15 +5,27 @@ import { buildIndex } from './data/analytics.js';
 import { demoRepos, demoRuns } from './data/demo.js';
 import { GitHubClient, GitHubError, RateLimitError } from './data/github.js';
 import { $$, byId, delegate, html, setHtml, setText } from './lib/dom.js';
-import { fmtNumber, repoShortName, timeAgo } from './lib/format.js';
+import { fmtNumber, repoShortName, timeAgo, windowLabel } from './lib/format.js';
 import { entityColor, healthTone } from './lib/palette.js';
-import { Store, fitWindow, hashToState, newestTimestamp, selectRuns, stateToHash } from './lib/store.js';
+import {
+  Store,
+  WINDOW_PRESETS,
+  fitWindow,
+  hashToState,
+  newestTimestamp,
+  previousWindow,
+  selectRuns,
+  stateToHash,
+} from './lib/store.js';
 import { destroyAll, initChartDefaults } from './ui/charts.js';
+import { initPalette, openPalette } from './ui/command.js';
 import { viewError } from './ui/components.js';
-import { closeModal } from './ui/modal.js';
+import { TAB_ICONS, icon } from './ui/icons.js';
+import { activeModalId, closeModal, isModalOpen, openModal } from './ui/modal.js';
+import { currentTheme, initTheme, onThemeChange, toggleTheme } from './ui/theme.js';
 import { announce, toast } from './ui/toast.js';
 import { renderFailures } from './views/failures.js';
-import { renderLive } from './views/live.js';
+import { renderLive, tickLive } from './views/live.js';
 import {
   closeRunLogs,
   loadLogsFor,
@@ -24,7 +36,7 @@ import {
   runKey,
 } from './views/logs.js';
 import { renderOverview, renderRepoGrid } from './views/overview.js';
-import { PAGE_SIZE, renderRuns } from './views/runs.js';
+import { PAGE_SIZE, exportRuns, renderRuns } from './views/runs.js';
 import { renderTimeline } from './views/timeline.js';
 
 const TAB_TITLES = {
@@ -32,10 +44,11 @@ const TAB_TITLES = {
   live: 'Live now',
   repos: 'Repositories',
   runs: 'All runs',
-  failures: 'Failure analysis',
+  failures: 'Failures',
   logs: 'Run logs',
-  timeline: 'Timeline & runtimes',
+  timeline: 'Timeline',
 };
+const TAB_ORDER = Object.keys(TAB_TITLES);
 
 // Active runs are polled; history is not. The legacy 30s timer refetched
 // everything for every repository forever — this asks only for what changes,
@@ -67,12 +80,19 @@ const store = new Store();
 const ctx = {
   client: null,
   index: buildIndex([]),
+  fullIndex: buildIndex([]),
+  prevIndex: buildIndex([]),
   activeRuns: [],
   state: store.state,
   expanded: {},
   expandedLogs: {},
   logRows: [],
   runsShown: PAGE_SIZE,
+  runsQuery: '',
+  runsSort: { key: 'ts', dir: 'desc' },
+  rate: null,
+  syncLabel: '',
+  bannerDismissed: false,
   demo: true,
 };
 
@@ -86,16 +106,26 @@ function currentRuns() {
 }
 
 function rebuildIndex() {
+  const state = store.state;
   const scoped = currentRuns();
   ctx.index = buildIndex(scoped);
-  ctx.state = store.state;
-  ctx.demo = store.state.demo;
-  ctx.activeRuns = (store.state.demo ? store.state.runs : store.state.activeRuns)
+  // The sidebar lists every repository in the window, whichever one is in
+  // focus, so you can move straight from one to another.
+  ctx.fullIndex = state.repo === 'all'
+    ? ctx.index
+    : buildIndex(selectRuns(state.runs, { days: state.days, repo: 'all' }));
+  ctx.prevIndex = buildIndex(previousWindow(state.runs, { days: state.days, repo: state.repo }));
+  // Everything loaded for the repository in focus, whatever the window — for
+  // the few panels that compare weeks and would otherwise see one week.
+  ctx.historyRuns = state.repo === 'all' ? state.runs : state.runs.filter((run) => run.repo === state.repo);
+  ctx.state = state;
+  ctx.demo = state.demo;
+  ctx.activeRuns = (state.demo ? state.runs : state.activeRuns)
     .filter((run) => run.status === 'in_progress')
-    .filter((run) => store.state.repo === 'all' || run.repo === store.state.repo);
-  ctx.catalogue = buildCatalogue(store.state.runs);
-  ctx.loadedRuns = store.state.runs.length;
-  ctx.newestRunTs = newestTimestamp(store.state.runs);
+    .filter((run) => state.repo === 'all' || run.repo === state.repo);
+  ctx.catalogue = buildCatalogue(state.runs);
+  ctx.loadedRuns = state.runs.length;
+  ctx.newestRunTs = newestTimestamp(state.runs);
 }
 
 /**
@@ -140,7 +170,13 @@ function renderActiveTab() {
   const renderers = {
     overview: () => renderOverview(ctx),
     live: () => renderLive(ctx),
-    repos: () => renderRepoGrid(ctx, 'reposTabGrid'),
+    repos: () => {
+      const n = ctx.index.repos.length;
+      setText('reposSub', n
+        ? `${fmtNumber(n)} ${n === 1 ? 'repository' : 'repositories'} with runs in the last ${windowLabel(store.state.days)} — expand one for its score breakdown and workflows`
+        : 'No repository has runs in this window');
+      renderRepoGrid(ctx, 'reposTabGrid');
+    },
     runs: () => renderRuns(ctx),
     failures: () => renderFailures(ctx),
     timeline: () => renderTimeline(ctx),
@@ -149,38 +185,127 @@ function renderActiveTab() {
   safely(TAB_TITLES[tab] || tab, `tab-${tab}`, renderers[tab] || renderers.overview);
 }
 
+function subtitle() {
+  const state = store.state;
+  const repos = ctx.fullIndex.repos.length;
+  const bits = [
+    `${fmtNumber(repos)} ${repos === 1 ? 'repository' : 'repositories'}`,
+    `${fmtNumber(ctx.index.runs.length)} runs`,
+    `last ${windowLabel(state.days)}`,
+  ];
+  if (state.repo !== 'all') bits.push(state.repo);
+  if (!state.demo && state.lastFetch) bits.push(`updated ${timeAgo(state.lastFetch)}`);
+  return bits.join(' · ');
+}
+
+function setCount(id, n, flagClass) {
+  const el = byId(id);
+  if (!el) return;
+  el.textContent = String(n);
+  el.classList.toggle(flagClass, n > 0);
+}
+
 function renderChrome() {
   const state = store.state;
+  const title = TAB_TITLES[state.tab] || 'Overview';
 
-  setText('topbar-title', TAB_TITLES[state.tab] || 'Overview');
-  setText('logoSub', state.demo ? 'sample data' : 'live');
+  setText('topbar-title', title);
+  setText('topbar-sub', subtitle());
+  document.title = `${title} · Actions Monitor`;
+  setText('logoSub', state.demo ? 'sample data' : (state.owner || 'live · all repositories'));
   setText('liveBadgeText', state.demo ? 'sample' : 'live');
   const badge = byId('liveBadge');
   if (badge) badge.classList.toggle('demo-mode', state.demo);
 
-  setText('nav-repo-count', String(ctx.index.repos.length || '—'));
-  setText('nav-live-count', String(ctx.activeRuns.length));
-  setText('nav-logs-count', String(ctx.index.repos.length || '—'));
+  const repoCount = ctx.fullIndex.repos.length;
+  setText('nav-repo-count', repoCount ? String(repoCount) : '—');
+  setText('nav-logs-count', repoCount ? String(repoCount) : '—');
+  setCount('nav-live-count', ctx.activeRuns.length, 'is-live');
+  setCount('nav-fail-count', ctx.index.overall.failed, 'is-bad');
+
+  const banner = byId('mainOverlay');
+  if (banner) banner.hidden = !state.demo || ctx.bannerDismissed;
 
   renderSidebarRepos();
+  renderConnection();
   syncSelects();
+  syncSegment();
+  syncThemeButton();
 }
 
 function renderSidebarRepos() {
-  const rows = Array.from(ctx.index.repoStats.values())
+  const rows = Array.from(ctx.fullIndex.repoStats.values())
     .sort((a, b) => a.health.score - b.health.score)
-    .slice(0, 24);
+    .slice(0, 40);
 
   setHtml('sidebar-repo-list', rows.length
     ? html`${rows.map((stats) => html`
-      <button class="nav-item" type="button" data-repo-filter="${stats.repo}"
+      <button class="nav-item repo-item" type="button" data-repo-filter="${stats.repo}" title="${stats.repo}"
         aria-pressed="${store.state.repo === stats.repo ? 'true' : 'false'}">
-        <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;background:${entityColor(stats.repo)};"></span>
-        <span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${repoShortName(stats.repo)}</span>
-        <span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:${healthTone(stats.health.score).color};">${stats.health.score}</span>
+        <span class="repo-dot" style="background:${entityColor(stats.repo)};" aria-hidden="true"></span>
+        <span class="nav-text">${repoShortName(stats.repo)}</span>
+        <span class="repo-score tone-${healthTone(stats.health.score).tone}">${stats.health.score}</span>
       </button>
     `)}`
-    : html`<div class="nav-empty">no repositories yet</div>`);
+    : html`<div class="nav-empty">No repositories in this window</div>`);
+}
+
+function rateMeter(rate) {
+  if (!rate || rate.limit === null) return '';
+  const share = rate.remaining / rate.limit;
+  const cls = share <= 0.12 ? 'low' : share <= 0.35 ? 'warn' : '';
+  return html`
+    <div class="rate-meter" id="rateMeter" title="${rate.revalidated} responses served from cache without spending quota">
+      <span>API</span>
+      <div class="rate-track"><div class="rate-fill ${cls}" id="rateFill" style="width:${Math.max(2, Math.round(share * 100))}%"></div></div>
+      <span id="rateLabel">${fmtNumber(rate.remaining)}/${fmtNumber(rate.limit)}</span>
+    </div>
+  `;
+}
+
+/** The connection card at the foot of the sidebar: state, budget, actions. */
+function renderConnection() {
+  const state = store.state;
+  if (state.demo) {
+    setHtml('connCard', html`
+      <div class="conn-card">
+        <div class="conn-row">
+          <span class="conn-dot" aria-hidden="true"></span>
+          <div class="grow">
+            <div class="conn-title">Sample data</div>
+            <div class="conn-sub">Generated locally, nothing fetched</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" type="button" data-action="open-connect">
+          ${icon('github', 14)} Connect GitHub
+        </button>
+        <div class="conn-foot">Your token stays in this tab — never stored, never sent anywhere but api.github.com.</div>
+      </div>
+    `);
+    return;
+  }
+
+  setHtml('connCard', html`
+    <div class="conn-card">
+      <div class="conn-row">
+        <span class="conn-dot live" aria-hidden="true"></span>
+        <div class="grow">
+          <div class="conn-title">${state.owner || 'All repositories'}</div>
+          <div class="conn-sub">${fmtNumber(state.repos.length)} repos · ${fmtNumber(state.runs.length)} runs · updated ${timeAgo(state.lastFetch)}</div>
+        </div>
+      </div>
+      ${rateMeter(ctx.rate)}
+      <div class="conn-status" id="connStatus">${state.fetching ? ctx.syncLabel : ''}</div>
+      <div class="conn-actions">
+        <button class="btn btn-sm" type="button" data-action="refresh" ${state.fetching ? 'disabled' : ''}>
+          ${icon('refresh', 13)} Refresh
+        </button>
+        <button class="btn btn-sm btn-danger" type="button" data-action="disconnect" id="disconnectBtn">
+          ${icon('power', 13)} Disconnect
+        </button>
+      </div>
+    </div>
+  `);
 }
 
 /** Keep the repo / workflow dropdowns in step with the data without clobbering
@@ -189,17 +314,17 @@ function syncSelects() {
   const state = store.state;
   const { repos: allRepos, workflows: allWorkflows } = ctx.catalogue;
 
-  const repoOptions = [{ value: 'all', label: 'All repos' }].concat(
+  const repoOptions = [{ value: 'all', label: 'All repositories' }].concat(
     allRepos.map((repo) => ({ value: repo, label: repo })),
   );
   fillSelect('repoFilter', repoOptions, state.repo);
   fillSelect('heatRepo', repoOptions, state.heatRepo);
 
-  fillSelect('liveRepoFilter', [{ value: 'all', label: 'all repos' }].concat(
+  fillSelect('liveRepoFilter', [{ value: 'all', label: 'All repositories' }].concat(
     Array.from(new Set(ctx.activeRuns.map((r) => r.repo))).sort().map((repo) => ({ value: repo, label: repo })),
   ), state.liveRepo || 'all');
 
-  const workflows = [{ value: 'all', label: 'all workflows' }].concat(
+  const workflows = [{ value: 'all', label: 'Any workflow' }].concat(
     allWorkflows.map((wf) => ({ value: wf, label: wf })),
   );
   fillSelect('runsWfFilter', workflows, state.workflow);
@@ -217,7 +342,7 @@ function syncSelects() {
 function fillSelect(id, options, selected) {
   const el = byId(id);
   if (!el) return;
-  const wanted = options.map((o) => o.value).join(' ');
+  const wanted = options.map((o) => o.value).join(' ');
   if (el.dataset.signature === wanted) {
     if (el.value !== selected) el.value = options.some((o) => o.value === selected) ? selected : 'all';
     return;
@@ -230,6 +355,21 @@ function fillSelect(id, options, selected) {
     return node;
   }));
   el.value = options.some((o) => o.value === selected) ? selected : 'all';
+}
+
+function syncSegment() {
+  $$('#timeSegment [data-days]').forEach((button) => {
+    button.setAttribute('aria-pressed', Number(button.getAttribute('data-days')) === store.state.days ? 'true' : 'false');
+  });
+}
+
+function syncThemeButton() {
+  const button = byId('themeBtn');
+  if (!button) return;
+  const light = currentTheme() === 'light';
+  setHtml(button, icon(light ? 'moon' : 'sun', 16));
+  button.setAttribute('aria-label', light ? 'Switch to dark theme' : 'Switch to light theme');
+  button.title = `${light ? 'Dark' : 'Light'} theme (t)`;
 }
 
 function render() {
@@ -257,6 +397,26 @@ function writeHash() {
   const url = `${window.location.pathname}${window.location.search}${hash}`;
   window.history.replaceState(null, '', url);
 }
+
+/* ----------------------------------------------------------------- drawer */
+
+const narrow = () => typeof matchMedia === 'function' && matchMedia('(max-width: 1024px)').matches;
+
+function setSidebar(open) {
+  const app = byId('app');
+  if (!app) return;
+  app.classList.toggle('sidebar-open', open);
+  const button = byId('menuBtn');
+  if (button) button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    const active = byId(`nav-${store.state.tab}`);
+    if (active) active.focus();
+  } else if (button && narrow() && document.activeElement && byId('sidebar').contains(document.activeElement)) {
+    button.focus();
+  }
+}
+
+const sidebarOpen = () => Boolean(byId('app') && byId('app').classList.contains('sidebar-open'));
 
 /* ---------------------------------------------------------------- polling */
 
@@ -300,18 +460,39 @@ function showSyncProgress(done, total, label) {
   const fill = byId('syncFill');
   if (bar) bar.hidden = false;
   if (fill) fill.style.width = `${total ? Math.round((done / total) * 100) : 0}%`;
-  setText('connectStatus', total > 1 ? `${done}/${total} · ${repoShortName(label)}` : label);
+  ctx.syncLabel = total > 1 ? `${done}/${total} · ${repoShortName(label)}` : String(label || '');
+  setText('connStatus', ctx.syncLabel);
+  const dialogStatus = byId('connectStatus');
+  if (dialogStatus && activeModalId() === 'connectModal') {
+    dialogStatus.classList.add('ok');
+    setText(dialogStatus, `Syncing · ${ctx.syncLabel}`);
+  }
+}
+
+function openConnect() {
+  const status = byId('connectStatus');
+  if (status) {
+    status.classList.remove('ok');
+    setText(status, '');
+  }
+  openModal('connectModal', { initialFocus: '#tokenInput' });
 }
 
 async function connect(token, owner) {
   const button = byId('connectBtn');
+  const status = byId('connectStatus');
   button.disabled = true;
   button.textContent = 'Connecting…';
+  status.classList.add('ok');
+  setText(status, 'Checking the token…');
   store.set({ fetching: true, error: null });
 
   const client = new GitHubClient({
     token,
-    onRateLimit: renderRateMeter,
+    onRateLimit: (rate) => {
+      ctx.rate = rate;
+      if (!store.state.demo) renderConnection();
+    },
   });
 
   try {
@@ -337,7 +518,11 @@ async function connect(token, owner) {
       );
     }
 
+    // A second connection replaces the first: drop its client and its cache.
+    if (ctx.client) ctx.client.abortAll();
+    clearTimeout(pollTimer);
     ctx.client = client;
+    ctx.bannerDismissed = false;
     logCache.clear();
     destroyAll();
     store.set({
@@ -352,15 +537,9 @@ async function connect(token, owner) {
       repo: 'all',
     });
 
-    byId('mainOverlay').hidden = true;
     byId('tokenInput').value = '';
-    byId('tokenInput').disabled = true;
-    byId('orgInput').disabled = true;
-    byId('disconnectBtn').classList.add('visible');
-    byId('refreshBtn').disabled = false;
-    button.textContent = 'Connected';
-
-    setText('connectStatus', `${repos.length} repos · ${fmtNumber(runs.length)} runs`);
+    setText(status, '');
+    if (activeModalId() === 'connectModal') closeModal();
 
     const requested = store.state.days;
     const fitted = fitWindow(runs, requested);
@@ -368,8 +547,8 @@ async function connect(token, owner) {
       store.set({ days: fitted });
       toast({
         kind: 'info',
-        title: `Widened the window to ${fitted} days`,
-        body: `Nothing ran in the last ${requested} days. Your most recent run was ${timeAgo(newestTimestamp(runs))}.`,
+        title: `Widened the window to ${windowLabel(fitted)}`,
+        body: `Nothing ran in the last ${windowLabel(requested)}. Your most recent run was ${timeAgo(newestTimestamp(runs))}.`,
         timeout: 12_000,
       });
     }
@@ -377,7 +556,7 @@ async function connect(token, owner) {
     toast({
       kind: 'success',
       title: 'Connected',
-      body: `${fmtNumber(runs.length)} runs across ${repos.length} repositories.`,
+      body: `${fmtNumber(runs.length)} runs across ${repos.length} ${repos.length === 1 ? 'repository' : 'repositories'}.`,
     });
     if (result.failed.length) {
       toast({
@@ -394,12 +573,14 @@ async function connect(token, owner) {
     schedulePoll();
   } catch (err) {
     store.set({ fetching: false, error: err.message });
-    button.disabled = false;
-    button.textContent = 'Retry connection';
-    setText('connectStatus', err.message);
+    status.classList.remove('ok');
+    setText(status, err.message);
     toast({ kind: 'error', title: 'Could not connect', body: err.message, timeout: 0 });
   } finally {
+    button.disabled = false;
+    button.textContent = 'Connect';
     byId('syncBar').hidden = true;
+    ctx.syncLabel = '';
   }
 }
 
@@ -408,6 +589,8 @@ function disconnect() {
   if (ctx.client) ctx.client.abortAll();
   // Drop the credential and everything derived from it.
   ctx.client = null;
+  ctx.rate = null;
+  ctx.bannerDismissed = false;
   logCache.clear();
   destroyAll();
 
@@ -422,27 +605,22 @@ function disconnect() {
     rateLimit: null,
   });
 
-  byId('mainOverlay').hidden = false;
-  byId('tokenInput').disabled = false;
   byId('tokenInput').value = '';
-  byId('orgInput').disabled = false;
-  byId('disconnectBtn').classList.remove('visible');
-  const button = byId('connectBtn');
-  button.disabled = false;
-  button.textContent = 'Connect live data';
-  byId('rateMeter').hidden = true;
-  setText('connectStatus', '');
+  byId('orgInput').value = '';
   toast({ kind: 'info', title: 'Disconnected', body: 'The token was discarded and sample data restored.' });
 }
 
 async function refreshAll() {
   if (store.state.demo) {
     store.set({ runs: demoRuns() });
+    announce('Sample data regenerated.');
     return;
   }
   if (!ctx.client || store.state.fetching) return;
   store.set({ fetching: true });
-  byId('refreshBtn').disabled = true;
+  const refreshBtn = byId('refreshBtn');
+  refreshBtn.disabled = true;
+  refreshBtn.classList.add('is-busy');
   try {
     const result = await withDeadline(
       syncAll(ctx.client, {
@@ -468,7 +646,6 @@ async function refreshAll() {
         timeout: 0,
         dedupe: 'refresh',
       });
-      setText('connectStatus', 'refresh failed · showing last good data');
       return;
     }
 
@@ -490,29 +667,102 @@ async function refreshAll() {
     }
     announce('Data refreshed.');
   } catch (err) {
-    toast({ kind: 'error', title: 'Refresh failed', body: err.message, timeout: 0, dedupe: 'refresh' });
-    setText('connectStatus', 'refresh failed · showing last good data');
+    toast({ kind: 'error', title: 'Refresh failed — keeping the data you had', body: err.message, timeout: 0, dedupe: 'refresh' });
   } finally {
     store.set({ fetching: false });
-    byId('refreshBtn').disabled = false;
+    refreshBtn.disabled = false;
+    refreshBtn.classList.remove('is-busy');
     byId('syncBar').hidden = true;
-    if (!String(byId('connectStatus').textContent).startsWith('refresh failed')) {
-      setText('connectStatus', `updated ${timeAgo(Date.now())}`);
-    }
+    ctx.syncLabel = '';
   }
 }
 
-function renderRateMeter(rate) {
-  const meter = byId('rateMeter');
-  if (!meter || rate.limit === null) return;
-  meter.hidden = false;
-  const share = rate.remaining / rate.limit;
-  const fill = byId('rateFill');
-  fill.style.width = `${Math.max(2, Math.round(share * 100))}%`;
-  fill.classList.toggle('warn', share <= 0.35 && share > 0.12);
-  fill.classList.toggle('low', share <= 0.12);
-  setText('rateLabel', `${fmtNumber(rate.remaining)}/${fmtNumber(rate.limit)}`);
-  meter.title = `${rate.revalidated} responses served from cache without spending quota`;
+/* -------------------------------------------------------- command palette */
+
+function paletteItems() {
+  const state = store.state;
+  const items = [];
+
+  TAB_ORDER.forEach((tab, i) => {
+    items.push({
+      group: 'Views',
+      icon: TAB_ICONS[tab],
+      label: TAB_TITLES[tab],
+      hint: String(i + 1),
+      keywords: 'go to view tab',
+      run: () => store.set({ tab }),
+    });
+  });
+
+  if (state.repo !== 'all') {
+    items.push({
+      group: 'Repositories',
+      icon: 'x',
+      label: 'Show all repositories',
+      hint: 'clear filter',
+      run: () => store.set({ repo: 'all' }),
+    });
+  }
+  ctx.catalogue.repos.forEach((repo) => {
+    items.push({
+      group: 'Repositories',
+      icon: 'folder',
+      label: repo,
+      hint: state.repo === repo ? 'in focus' : 'focus',
+      keywords: 'repository filter focus',
+      run: () => store.set({ repo, runsShown: PAGE_SIZE }),
+    });
+  });
+
+  WINDOW_PRESETS.forEach((days) => {
+    items.push({
+      group: 'Time range',
+      icon: 'clock',
+      label: `Last ${windowLabel(days)}`,
+      hint: state.days === days ? 'current' : '',
+      keywords: 'window range days',
+      run: () => store.set({ days, runsShown: PAGE_SIZE }),
+    });
+  });
+
+  items.push({ group: 'Actions', icon: 'refresh', label: 'Refresh data', hint: 'r', run: refreshAll });
+  items.push({
+    group: 'Actions',
+    icon: currentTheme() === 'light' ? 'moon' : 'sun',
+    label: currentTheme() === 'light' ? 'Switch to dark theme' : 'Switch to light theme',
+    hint: 't',
+    keywords: 'theme colour scheme',
+    run: toggleTheme,
+  });
+  if (state.demo) {
+    items.push({ group: 'Actions', icon: 'github', label: 'Connect GitHub', hint: 'c', keywords: 'token login', run: openConnect });
+  } else {
+    items.push({ group: 'Actions', icon: 'power', label: 'Disconnect and discard the token', keywords: 'logout', run: disconnect });
+  }
+  items.push({
+    group: 'Actions',
+    icon: 'keyboard',
+    label: 'Keyboard shortcuts',
+    hint: '?',
+    run: () => openModal('shortcutsModal'),
+  });
+  return items;
+}
+
+/* ------------------------------------------------------------------ ticker */
+
+let ticks = 0;
+
+/** Once a second: advance live timers; every 30s, refresh "updated x ago". */
+function startTicker() {
+  setInterval(() => {
+    ticks += 1;
+    if (store.state.tab === 'live' && ctx.activeRuns.length) tickLive(ctx);
+    if (ticks % 30 === 0 && !store.state.demo) {
+      setText('topbar-sub', subtitle());
+      if (!store.state.fetching) renderConnection();
+    }
+  }, 1000);
 }
 
 /* ------------------------------------------------------------------ events */
@@ -522,9 +772,12 @@ function findRun(repo, id) {
   return pool.find((run) => run.repo === repo && String(run.id) === String(id)) || null;
 }
 
+let searchTimer = null;
+
 function wire() {
   delegate(document, 'click', '#viewTabs [role="tab"]', (_event, el) => {
     store.set({ tab: el.dataset.tab });
+    if (narrow()) setSidebar(false);
   });
 
   // Roving focus across the tablist, as the WAI-ARIA tabs pattern expects.
@@ -547,6 +800,10 @@ function wire() {
     });
   });
 
+  delegate('timeSegment', 'click', '[data-days]', (_event, el) => {
+    store.set({ days: Number(el.getAttribute('data-days')), runsShown: PAGE_SIZE });
+  });
+
   byId('liveRepoFilter').addEventListener('change', (event) => {
     store.set({ liveRepo: event.target.value });
   });
@@ -556,16 +813,32 @@ function wire() {
     const token = byId('tokenInput').value.trim();
     const owner = byId('orgInput').value.trim();
     if (!token) {
-      setText('connectStatus', 'Enter a token first.');
+      const status = byId('connectStatus');
+      status.classList.remove('ok');
+      setText(status, 'Paste a token first.');
+      byId('tokenInput').focus();
       return;
     }
     connect(token, owner);
   });
 
-  byId('disconnectBtn').addEventListener('click', disconnect);
+  byId('tokenReveal').addEventListener('click', () => {
+    const input = byId('tokenInput');
+    const button = byId('tokenReveal');
+    const reveal = input.type === 'password';
+    input.type = reveal ? 'text' : 'password';
+    button.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+    button.setAttribute('aria-label', reveal ? 'Hide token' : 'Show token');
+    setHtml(button, icon(reveal ? 'eye-off' : 'eye', 16));
+    input.focus();
+  });
+
   byId('refreshBtn').addEventListener('click', refreshAll);
   byId('liveRefreshBtn').addEventListener('click', () => (store.state.demo ? render() : pollActive()));
-  byId('dismissOverlay').addEventListener('click', () => { byId('mainOverlay').hidden = true; });
+  byId('dismissOverlay').addEventListener('click', () => {
+    ctx.bannerDismissed = true;
+    byId('mainOverlay').hidden = true;
+  });
   byId('logClose').addEventListener('click', closeRunLogs);
   byId('logBackdrop').addEventListener('click', closeRunLogs);
   byId('logsReloadBtn').addEventListener('click', () => {
@@ -574,24 +847,47 @@ function wire() {
     render();
   });
 
+  byId('cmdkBtn').addEventListener('click', () => openPalette());
+  byId('themeBtn').addEventListener('click', () => toggleTheme());
+  byId('menuBtn').addEventListener('click', () => setSidebar(!sidebarOpen()));
+  byId('sidebarClose').addEventListener('click', () => setSidebar(false));
+  byId('sidebarScrim').addEventListener('click', () => setSidebar(false));
+
+  onThemeChange(() => {
+    initChartDefaults();
+    syncThemeButton();
+    renderActiveTab();
+  });
+
+  delegate(document, 'click', '[data-close]', () => closeModal());
+
+  delegate(document, 'click', '[data-action]', (_event, el) => {
+    const action = el.getAttribute('data-action');
+    if (action === 'open-connect') openConnect();
+    else if (action === 'disconnect') disconnect();
+    else if (action === 'refresh') refreshAll();
+    else if (action === 'export-runs') exportRuns(ctx);
+    else if (action === 'widen-window') store.set({ days: Number(el.getAttribute('data-days')) });
+    else if (action === 'show-more-runs') {
+      ctx.runsShown += PAGE_SIZE;
+      renderRuns(ctx);
+    }
+  });
+
+  delegate(document, 'click', '[data-jump]', (_event, el) => {
+    store.set({ tab: el.getAttribute('data-jump') });
+  });
+
   delegate(document, 'click', '[data-repo-filter]', (_event, el) => {
     const repo = el.getAttribute('data-repo-filter');
-    store.set({ repo: store.state.repo === repo ? 'all' : repo });
+    store.set({ repo: store.state.repo === repo ? 'all' : repo, runsShown: PAGE_SIZE });
+    if (narrow() && byId('sidebar').contains(el)) setSidebar(false);
   });
 
   delegate(document, 'click', '[data-repo-toggle]', (_event, el) => {
     const key = `${el.getAttribute('data-container')}:${el.getAttribute('data-repo-toggle')}`;
     ctx.expanded[key] = !ctx.expanded[key];
     render();
-  });
-
-  delegate(document, 'click', '[data-action="widen-window"]', (_event, el) => {
-    store.set({ days: Number(el.getAttribute('data-days')) });
-  });
-
-  delegate(document, 'click', '[data-action="show-more-runs"]', () => {
-    ctx.runsShown += PAGE_SIZE;
-    renderRuns(ctx);
   });
 
   delegate(document, 'click', '[data-job-toggle]', (_event, el) => {
@@ -629,16 +925,68 @@ function wire() {
     }
   });
 
+  // All-runs search and column sorting.
+  byId('runsSearch').addEventListener('input', (event) => {
+    clearTimeout(searchTimer);
+    const value = event.target.value;
+    searchTimer = setTimeout(() => {
+      ctx.runsQuery = value;
+      ctx.runsShown = PAGE_SIZE;
+      renderRuns(ctx);
+    }, 120);
+  });
+  delegate('tab-runs', 'click', 'th[data-sort]', (_event, th) => {
+    const key = th.getAttribute('data-sort');
+    const same = ctx.runsSort.key === key;
+    const defaultDir = key === 'ts' || key === 'dur' || key === 'queue' ? 'desc' : 'asc';
+    ctx.runsSort = { key, dir: same ? (ctx.runsSort.dir === 'asc' ? 'desc' : 'asc') : defaultDir };
+    renderRuns(ctx);
+  });
+
   document.addEventListener('keydown', (event) => {
     // event.target is not always an Element — a keypress with nothing focused
     // can target the document, which has no .matches and threw here.
     const target = event.target;
-    if (target && typeof target.matches === 'function'
-      && target.matches('input, select, textarea, [contenteditable]')) return;
-    if (event.key === 'r' && !event.metaKey && !event.ctrlKey && !event.altKey) refreshAll();
-    if (event.key === '/') {
+    const typing = target && typeof target.matches === 'function'
+      && target.matches('input, select, textarea, [contenteditable]');
+    const mod = event.metaKey || event.ctrlKey;
+
+    if (mod && !event.altKey && event.key.toLowerCase() === 'k') {
       event.preventDefault();
-      byId('repoFilter').focus();
+      openPalette();
+      return;
+    }
+    if (typing || mod || event.altKey) return;
+    if (isModalOpen()) return;
+
+    if (event.key === 'Escape' && sidebarOpen()) {
+      setSidebar(false);
+      return;
+    }
+    if (/^[1-7]$/.test(event.key)) {
+      store.set({ tab: TAB_ORDER[Number(event.key) - 1] });
+      return;
+    }
+    switch (event.key) {
+      case 'r':
+        refreshAll();
+        break;
+      case 't':
+        toggleTheme();
+        break;
+      case 'k':
+      case '/':
+        event.preventDefault();
+        openPalette();
+        break;
+      case 'c':
+        if (store.state.demo) openConnect();
+        break;
+      case '?':
+        openModal('shortcutsModal');
+        break;
+      default:
+        break;
     }
   });
 
@@ -690,9 +1038,18 @@ function wire() {
 
 /* -------------------------------------------------------------------- boot */
 
+// Boot exactly once. A second DOMContentLoaded (jsdom fires its own after a
+// test dispatches one by hand) would wire every handler twice, and a toggle
+// wired twice is a no-op.
+let booted = false;
+
 function boot() {
+  if (booted) return;
+  booted = true;
+  initTheme();
   initChartDefaults();
   wire();
+  initPalette(paletteItems);
 
   store.subscribe((state, keys) => {
     if (keys.has('tab')) showTab(state.tab);
@@ -709,6 +1066,7 @@ function boot() {
   applyHash();
   showTab(store.state.tab);
   render();
+  startTicker();
 }
 
 if (document.readyState === 'loading') {

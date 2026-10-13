@@ -1,327 +1,81 @@
-/* Additions on top of the original component styles. */
-
-/* ---- Rate-limit meter -------------------------------------------------- */
-
-.rate-meter {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--text3);
-}
-
-.rate-track {
-    width: 54px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--bg4);
-    overflow: hidden;
-}
-
-.rate-fill {
-    height: 100%;
-    border-radius: 2px;
-    background: var(--accent);
-    transition: width var(--transition-speed);
-}
-
-.rate-fill.warn { background: var(--amber); }
-.rate-fill.low { background: var(--red); }
-
-/* ---- Toasts ------------------------------------------------------------ */
-
-.toast-stack {
-    position: fixed;
-    right: 16px;
-    bottom: 16px;
-    z-index: 120;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-width: min(420px, calc(100vw - 32px));
-}
-
-.toast {
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    border-left-width: 3px;
-    border-radius: var(--radius);
-    padding: 10px 12px;
-    font-size: 12px;
-    color: var(--text);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-}
-
-.toast.error { border-left-color: var(--red); }
-.toast.warn { border-left-color: var(--amber); }
-.toast.info { border-left-color: var(--blue); }
-.toast.success { border-left-color: var(--green); }
-
-.toast-title {
-    font-family: var(--mono);
-    font-size: 11px;
-    margin-bottom: 2px;
-}
-
-.toast-body {
-    color: var(--text2);
-    font-size: 11px;
-    line-height: 1.45;
-}
-
-.toast-close {
-    margin-left: auto;
-    background: none;
-    border: 0;
-    color: var(--text3);
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-    padding: 0 2px;
-}
-
-/* ---- Error boundary ---------------------------------------------------- */
-
-.view-error {
-    border: 1px solid rgba(208, 59, 59, 0.35);
-    background: var(--red-dim);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text);
-}
-
-.view-error code {
-    display: block;
-    margin-top: 6px;
-    color: var(--text2);
-    font-size: 11px;
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-/* ---- Legends (identity is never colour alone) -------------------------- */
-
-.legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-}
-
-.legend-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text2);
-}
-
-.legend-swatch {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    flex-shrink: 0;
-    display: inline-block;
-}
-
-.legend-swatch.line {
-    width: 16px;
-    height: 2px;
-    border-radius: 1px;
-}
-
-.legend-value {
-    color: var(--text3);
-}
-
-/* ---- Nav / tabs (now real controls) ------------------------------------ */
-
-.nav-item {
-    width: 100%;
-    text-align: left;
-    background: none;
-    font-family: inherit;
-}
-
-.nav-item[aria-selected='true'] {
-    background: var(--bg3);
-    color: var(--text);
-    border-color: var(--border);
-}
-
-.nav-empty {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text3);
-    padding: 6px 10px;
-}
-
-/* ---- Progress bar for a sync ------------------------------------------- */
-
-.sync-bar {
-    height: 2px;
-    background: var(--bg4);
-    border-radius: 1px;
-    overflow: hidden;
-    margin-top: 8px;
-}
-
-.sync-fill {
-    height: 100%;
-    background: var(--accent);
-    width: 0;
-    transition: width 0.2s linear;
-}
-
-/* ---- Data table sorting ------------------------------------------------ */
-
-.runs-table th[aria-sort] {
-    cursor: pointer;
-    user-select: none;
-}
-
-.runs-table th[aria-sort]::after {
-    content: '';
-    margin-left: 5px;
-    opacity: 0.5;
-}
-
-.runs-table th[aria-sort='ascending']::after { content: '▲'; opacity: 1; }
-.runs-table th[aria-sort='descending']::after { content: '▼'; opacity: 1; }
-
-.run-row {
-    cursor: pointer;
-}
-
-.demo-flag {
-    display: inline-block;
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--amber);
-    background: var(--amber-dim);
-    border-radius: 3px;
-    padding: 1px 5px;
-    margin-left: 6px;
-    vertical-align: middle;
-}
-
-/* ---- Empty states ------------------------------------------------------ */
-
-.empty-state {
-    text-align: center;
-    padding: 36px 16px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text3);
-}
-
-.empty-state strong {
-    display: block;
-    color: var(--text2);
-    font-size: 13px;
-    margin-bottom: 6px;
-}
-
-/* ---- Modal focus containment ------------------------------------------- */
-
-.log-modal:not(.open) {
-    pointer-events: none;
-}
-
-/* ---- Responsive -------------------------------------------------------- */
-
-@media (max-width: 860px) {
-    .layout {
-        flex-direction: column;
-    }
-
-    .sidebar {
-        position: static;
-        width: 100%;
-        height: auto;
-        border-right: 0;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .topbar {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-}
-
-/* ---- Pulse feed --------------------------------------------------------- */
-
-.pulse-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.pulse-row:last-child { border-bottom: 0; }
-
-.pulse-icon {
-    flex-shrink: 0;
-    line-height: 1.5;
-    font-size: 12px;
-}
-
-.pulse-text {
-    font-size: 12px;
-    font-family: var(--mono);
-    color: var(--text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.pulse-sub {
-    font-size: 10px;
-    color: var(--text3);
-    margin-top: 1px;
-}
-
-/* ---- Repo summary is now a real button --------------------------------- */
-
-.repo-summary {
-    width: 100%;
-    background: none;
-    border: 0;
-    font: inherit;
-    color: inherit;
-    text-align: left;
-}
-
-.section-sub {
-    font-size: 11px;
-    font-family: var(--mono);
-    color: var(--text3);
-}
+/* View-specific styling: live cards, failure cards, the log viewer, the
+ * Overview side panels and the Timeline. */
 
 /* ---- Live run cards ----------------------------------------------------- */
 
 .live-card {
-    background: var(--bg3);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 16px 18px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow-1);
+    transition: border-color var(--speed);
 }
 
-.live-card.overrun { border-color: rgba(208, 59, 59, 0.3); }
+.live-card.overrun {
+    border-color: color-mix(in srgb, var(--red) 40%, transparent);
+}
+
+.live-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.live-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.live-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.live-meta {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.live-time {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.live-elapsed {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.overrun .live-elapsed {
+    color: var(--red-ink);
+}
+
+.live-remaining {
+    font-size: 11.5px;
+    color: var(--text-3);
+    margin-top: 1px;
+}
 
 .live-track {
     height: 6px;
-    background: var(--bg4);
+    background: var(--surface-3);
     border-radius: 3px;
     overflow: hidden;
 }
@@ -329,7 +83,20 @@
 .live-fill {
     height: 100%;
     border-radius: 3px;
-    transition: width 1s linear;
+    transition: width 1s linear, background var(--speed);
+}
+
+.live-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--text-3);
+}
+
+.live-foot .overrun-text {
+    color: var(--red-ink);
 }
 
 .finished-row {
@@ -337,102 +104,654 @@
     align-items: center;
     gap: 12px;
     padding: 9px 12px;
-    background: var(--bg3);
+    background: var(--surface);
     border-radius: var(--radius);
     border: 1px solid var(--border);
 }
 
-/* ---- Matrix ------------------------------------------------------------- */
-
-.matrix {
-    border-collapse: separate;
-    border-spacing: 2px;
-    font-family: var(--mono);
-    font-size: 11px;
-    min-width: 100%;
+.finished-row .live-name {
+    font-size: 13px;
+    font-weight: 500;
 }
 
-.matrix th {
-    padding: 4px 6px;
-    text-align: center;
-    color: var(--text3);
-    font-weight: 400;
-    font-size: 10px;
-    white-space: nowrap;
+.finished-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--text-3);
 }
 
-.matrix th[scope='row'] {
-    text-align: left;
-    color: var(--text2);
-    font-size: 11px;
-    padding-right: 10px;
+@media (max-width: 640px) {
+    .finished-right .faint-sm {
+        display: none;
+    }
 }
 
-.matrix td {
-    padding: 6px;
-    text-align: center;
-    min-width: 56px;
-    border-radius: 3px;
-    color: var(--text);
+/* ---- Failure cards ------------------------------------------------------ */
+
+.failure-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.matrix td.empty { color: var(--text3); background: var(--bg3); }
-
-/* ---- Sample-data banner -------------------------------------------------
- * Replaces the original full-page scrim. Blurring the whole dashboard behind
- * a modal card defeated the point of shipping sample data — you could not read
- * what you were being invited to explore, and the card centred itself in the
- * full scroll height, far below the fold. */
-
-.sample-banner {
+.fail-card {
     display: flex;
     align-items: center;
     gap: 14px;
-    background: var(--bg2);
-    border: 1px solid var(--border2);
-    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
     border-radius: var(--radius-lg);
     padding: 14px 16px;
-    margin-bottom: 20px;
+    box-shadow: var(--shadow-1);
+    transition: border-color var(--speed);
 }
 
-.sample-banner[hidden] { display: none; }
+.fail-card:hover {
+    border-color: var(--border-strong);
+    border-left-color: var(--red);
+}
 
-.sample-icon {
-    width: 34px;
-    height: 34px;
-    flex-shrink: 0;
-    background: var(--accent-dim);
-    border: 1px solid rgba(62, 207, 142, 0.3);
-    border-radius: 9px;
+.fail-card.flaky {
+    border-left-color: var(--amber);
+}
+
+.fail-card.flaky:hover {
+    border-left-color: var(--amber);
+}
+
+.fail-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.fail-top {
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: var(--accent);
+    justify-content: space-between;
+    gap: 12px;
 }
 
-.sample-icon svg { width: 17px; height: 17px; }
+.fail-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
 
-.sample-title {
-    font-family: var(--mono);
+.fail-name .truncate {
+    min-width: 0;
+}
+
+.fail-time {
+    font-size: 12px;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+.fail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-3);
+}
+
+.fail-meta .mono {
+    font-size: 11.5px;
+}
+
+.fail-meta .warn {
+    color: var(--amber-ink);
+}
+
+.fail-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+    .fail-card {
+        flex-wrap: wrap;
+    }
+
+    .fail-actions {
+        width: 100%;
+    }
+
+    .fail-actions .btn {
+        flex: 1;
+    }
+}
+
+/* ---- Overview side panels ---------------------------------------------- */
+
+.pulse-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.pulse-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    border-radius: 0;
+}
+
+.pulse-row:last-child {
+    border-bottom: 0;
+}
+
+button.pulse-row:hover .pulse-text {
+    color: var(--accent-ink);
+}
+
+.pulse-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    margin-top: 1px;
+}
+
+.pulse-icon .ic {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.25;
+}
+
+.pulse-icon.failed {
+    background: var(--red-soft);
+    color: var(--red-ink);
+}
+
+.pulse-icon.slow {
+    background: var(--amber-soft);
+    color: var(--amber-ink);
+}
+
+.pulse-icon.recovered {
+    background: var(--green-soft);
+    color: var(--green-ink);
+}
+
+.pulse-body {
+    min-width: 0;
+    flex: 1;
+}
+
+.pulse-text {
     font-size: 13px;
     color: var(--text);
-    margin-bottom: 3px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color var(--speed);
 }
 
-.sample-sub {
-    font-size: 11px;
+.pulse-sub {
+    font-size: 11.5px;
+    color: var(--text-3);
+    margin-top: 1px;
+}
+
+.streak-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 0;
+}
+
+.streak-num {
     font-family: var(--mono);
-    color: var(--text3);
-    line-height: 1.55;
+    font-size: 20px;
+    font-weight: 500;
+    min-width: 36px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
-/* ---- Chart fallback ------------------------------------------------------
- * Sits beside the canvas rather than replacing it. Replacing the wrapper's
- * contents removed the <canvas> from the DOM, so one transient failure was
- * permanent — nothing could rebuild a chart whose canvas no longer existed. */
+.streak-pips {
+    display: flex;
+    gap: 2px;
+}
 
-.chart-fallback {
+.streak-pip {
+    width: 5px;
+    height: 16px;
+    border-radius: 2px;
+    background: currentColor;
+    opacity: 0.75;
+}
+
+.sink-row {
+    padding: 6px 0;
+}
+
+.sink-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.sink-name {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text);
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sink-val {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+.sink-track {
+    height: 5px;
+    background: var(--surface-3);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.sink-fill {
     height: 100%;
+    border-radius: 3px;
+}
+
+.burn-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.burn-stat {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    min-width: 0;
+}
+
+.burn-stat .metric-label {
+    margin-bottom: 4px;
+}
+
+.burn-val {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* ---- Run Logs tab ------------------------------------------------------- */
+
+.rlog-prog {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-bottom: 10px;
+    min-height: 18px;
+}
+
+.rlog-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    overflow: hidden;
+    box-shadow: var(--shadow-1);
+    transition: border-color var(--speed);
+}
+
+.rlog-card.st-failed {
+    border-left: 3px solid var(--red);
+}
+
+.rlog-card.st-in_progress {
+    border-left: 3px solid var(--blue);
+}
+
+.rlog-card.st-success {
+    border-left: 3px solid var(--green);
+}
+
+.rlog-card.st-cancelled {
+    border-left: 3px solid var(--amber);
+}
+
+.rlog-card:hover {
+    border-color: var(--border-strong);
+}
+
+.rlog-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    transition: background var(--speed);
+}
+
+.rlog-head:hover {
+    background: var(--surface-hover);
+}
+
+.rlog-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.rlog-repo {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rlog-sub {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+}
+
+.rlog-sub .wf {
+    color: var(--text-2);
+    font-weight: 500;
+}
+
+.rlog-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.rlog-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 12px 14px 14px;
+    background: var(--surface-2);
+}
+
+.rlog-card.open .rlog-body {
+    display: block;
+}
+
+.log-caret {
+    width: 14px;
+    height: 14px;
+    color: var(--text-3);
+    transition: transform var(--speed);
+    flex-shrink: 0;
+}
+
+.rlog-card.open > .rlog-head .log-caret,
+.log-job.open > .log-job-head .log-caret {
+    transform: rotate(90deg);
+}
+
+/* ---- Job / step viewer (shared by the slide-over and the Run Logs tab) --- */
+
+.log-job {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+.log-job:last-child {
+    margin-bottom: 0;
+}
+
+.log-job-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+}
+
+.log-job-head:hover {
+    background: var(--surface-hover);
+}
+
+.log-job-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+}
+
+.log-job-sub {
+    font-size: 11.5px;
+    color: var(--text-3);
+    margin-top: 2px;
+}
+
+.log-job-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 4px 0 8px;
+}
+
+.log-job.open .log-job-body {
+    display: block;
+}
+
+.log-step {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 14px 6px 16px;
+    font-size: 12.5px;
+    border-left: 2px solid transparent;
+}
+
+.log-step:hover {
+    background: var(--surface-hover);
+}
+
+.log-step-num {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 11px;
+    min-width: 18px;
+}
+
+.log-step-icon {
+    flex-shrink: 0;
+    width: 12px;
+    font-size: 11px;
+    color: var(--text-3);
+}
+
+.log-step-name {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-2);
+    word-break: break-word;
+}
+
+.log-step-dur {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.log-step.s-failure {
+    border-left-color: var(--red);
+}
+
+.log-step.s-failure .log-step-name,
+.log-step.s-failure .log-step-icon {
+    color: var(--red-ink);
+}
+
+.log-step.s-skipped .log-step-name {
+    color: var(--text-3);
+}
+
+.log-step.s-running {
+    border-left-color: var(--blue);
+}
+
+.log-step.s-running .log-step-name,
+.log-step.s-running .log-step-icon {
+    color: var(--blue-ink);
+}
+
+.log-anno {
+    margin: 8px 14px 4px;
+    border: 1px solid color-mix(in srgb, var(--red) 30%, transparent);
+    background: var(--red-soft);
+    border-radius: var(--radius);
+    padding: 9px 11px;
+}
+
+.log-anno.warning {
+    border-color: color-mix(in srgb, var(--amber) 30%, transparent);
+    background: var(--amber-soft);
+}
+
+.log-anno.notice {
+    border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+    background: var(--blue-soft);
+}
+
+.log-anno-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 4px;
+}
+
+.log-anno-msg {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.45;
+}
+
+.log-raw-wrap {
+    margin: 6px 14px 10px;
+}
+
+.log-raw {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    max-height: 380px;
     overflow: auto;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-2);
+}
+
+.log-raw .l-err { color: var(--red-ink); }
+.log-raw .l-warn { color: var(--amber-ink); }
+.log-raw .l-grp { color: var(--blue-ink); }
+.log-raw .l-cmd { color: var(--text-3); }
+
+.log-note {
+    font-size: 12.5px;
+    color: var(--text-3);
+    line-height: 1.6;
+    padding: 10px 12px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+}
+
+.log-note.warn {
+    border-color: color-mix(in srgb, var(--amber) 40%, transparent);
+    color: var(--text-2);
+}
+
+.log-note code {
+    font-size: 11.5px;
+}
+
+.log-note code.log-raw {
+    display: block;
+    margin-top: 6px;
+    padding: 8px;
+    max-height: none;
+}
+
+.log-banner {
+    font-size: 12.5px;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    line-height: 1.5;
+}
+
+.log-banner.demo {
+    background: var(--amber-soft);
+    color: var(--amber-ink);
+    border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+}
+
+.log-banner.err {
+    background: var(--red-soft);
+    color: var(--red-ink);
+    border: 1px solid color-mix(in srgb, var(--red) 30%, transparent);
+}
+
+.log-spin {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -1px;
+}
+
+/* ---- Timeline ----------------------------------------------------------- */
+
+.vs-median {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
 }

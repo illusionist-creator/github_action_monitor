@@ -84,8 +84,13 @@ describe('rendered components never emit attacker markup', () => {
     const out = String(runRow(hostile));
     assert.equal(out.includes('<script'), false);
     assert.equal(out.includes('<img src=x'), false);
-    assert.equal(out.includes('<svg'), false);
+    // The row carries its own trusted <svg> icons, so look for the payload's
+    // handler attached to a real tag rather than for the tag name alone.
+    assert.equal(/<svg[^>]*onload/.test(out), false);
+    assert.equal(/<img[^>]*onerror/.test(out), false);
     assert.match(out, /&lt;script&gt;/);
+    assert.match(out, /&lt;svg onload/);
+    assert.match(out, /&quot;&gt;&lt;img src=x onerror=alert\(1\)&gt;/, 'the branch payload stays escaped inside its attribute');
   });
 
   it('escapes the status badge label', () => {

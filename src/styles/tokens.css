@@ -1,64 +1,140 @@
 /* Design tokens.
  *
- * Chrome colours (surfaces, ink, brand accent) keep the original identity.
+ * Chrome colours (surfaces, ink, brand accent) live here in two schemes,
+ * selected by `data-theme` on <html>. The attribute is set before first paint
+ * by a two-line script in <head>, from the OS preference, and toggled with the
+ * theme button or the `t` key. It is deliberately not persisted: this page
+ * promises that nothing survives the tab, and that promise is worth more than
+ * remembering a colour scheme.
+ *
  * DATA colours do not live here — they come from src/js/lib/palette.js, which
- * carries a categorical set validated for colour-vision deficiency against the
- * #13161b card surface. Keeping the two apart is what stops a chart series from
- * accidentally borrowing the "failure" red. */
+ * carries a categorical set validated for colour-vision deficiency. Keeping the
+ * two apart is what stops a chart series from borrowing the "failure" red. */
 
-:root {
+:root,
+:root[data-theme='dark'] {
     color-scheme: dark;
 
     /* Surfaces, darkest to lightest */
-    --bg: #0d0f12;
-    --bg2: #13161b;
-    --bg3: #1a1e25;
-    --bg4: #212630;
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface-2: #171a20;
+    --surface-3: #1f232b;
+    --surface-hover: #181c23;
 
-    --border: rgba(255, 255, 255, 0.07);
-    --border2: rgba(255, 255, 255, 0.12);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
 
     /* Ink */
-    --text: #e8eaf0;
-    --text2: #8b909e;
-    --text3: #767c8b;
+    --text: #eef0f4;
+    --text-2: #a4abb8;
+    --text-3: #727a89;
 
     /* Brand accent — UI chrome only, never a data series */
     --accent: #3ecf8e;
-    --accent-dim: rgba(62, 207, 142, 0.12);
+    --accent-ink: #3ecf8e;
+    --accent-contrast: #062b1b;
+    --accent-soft: rgba(62, 207, 142, 0.12);
+    --accent-ring: rgba(62, 207, 142, 0.38);
 
     /* Status. Fixed, reserved, and always paired with an icon and a label so
-     * hue never carries the meaning by itself. */
-    --green: #0ca30c;
-    --green-dim: rgba(12, 163, 12, 0.14);
-    --red: #d03b3b;
-    --red-dim: rgba(208, 59, 59, 0.14);
-    --amber: #fab219;
-    --amber-dim: rgba(250, 178, 25, 0.14);
+     * hue never carries the meaning by itself. `-ink` variants are the text
+     * colour with enough contrast on this surface; the bare name is for fills. */
+    --green: #15a34a;
+    --green-ink: #4ade80;
+    --green-soft: rgba(21, 163, 74, 0.16);
+    --red: #dc4343;
+    --red-ink: #ff8585;
+    --red-soft: rgba(220, 67, 67, 0.15);
+    --amber: #f0a020;
+    --amber-ink: #ffc45c;
+    --amber-soft: rgba(240, 160, 32, 0.15);
     --blue: #3987e5;
-    --blue-dim: rgba(57, 135, 229, 0.14);
-    --purple: #9085e9;
-    --purple-dim: rgba(144, 133, 233, 0.14);
+    --blue-ink: #83b4ff;
+    --blue-soft: rgba(57, 135, 229, 0.16);
+    --purple: #8b7cf6;
+    --purple-ink: #bcb1ff;
+    --purple-soft: rgba(139, 124, 246, 0.16);
 
     /* Chart chrome */
-    --grid: rgba(255, 255, 255, 0.05);
-    --axis: #767c8b;
+    --grid: rgba(255, 255, 255, 0.06);
+    --tick: #727a89;
 
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.4);
+    --shadow-3: 0 24px 64px rgba(0, 0, 0, 0.6);
+
+    --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-    --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-    --radius: 8px;
-    --radius-lg: 12px;
-    --transition-speed: 0.3s;
+    --radius-sm: 7px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+
+    --sidebar-w: 256px;
+    --topbar-h: 60px;
+    --content-max: 1480px;
+
+    --speed: 0.18s;
+    --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
     --focus: #7fb2ff;
 }
 
+:root[data-theme='light'] {
+    color-scheme: light;
+
+    --bg: #f3f4f7;
+    --surface: #ffffff;
+    --surface-2: #f6f7f9;
+    --surface-3: #eceef2;
+    --surface-hover: #f3f5f8;
+
+    --border: rgba(17, 24, 39, 0.09);
+    --border-strong: rgba(17, 24, 39, 0.16);
+
+    --text: #111827;
+    --text-2: #4b5563;
+    --text-3: #7a8495;
+
+    --accent: #15a36b;
+    --accent-ink: #0e8a59;
+    --accent-contrast: #ffffff;
+    --accent-soft: rgba(21, 163, 107, 0.12);
+    --accent-ring: rgba(21, 163, 107, 0.35);
+
+    --green: #16a34a;
+    --green-ink: #15803d;
+    --green-soft: rgba(22, 163, 74, 0.12);
+    --red: #dc2626;
+    --red-ink: #b91c1c;
+    --red-soft: rgba(220, 38, 38, 0.1);
+    --amber: #e8960c;
+    --amber-ink: #b45309;
+    --amber-soft: rgba(232, 150, 12, 0.13);
+    --blue: #2f7de1;
+    --blue-ink: #1d4ed8;
+    --blue-soft: rgba(47, 125, 225, 0.12);
+    --purple: #7c6cf0;
+    --purple-ink: #6d28d9;
+    --purple-soft: rgba(124, 108, 240, 0.12);
+
+    --grid: rgba(17, 24, 39, 0.07);
+    --tick: #7a8495;
+
+    --shadow-1: 0 1px 2px rgba(17, 24, 39, 0.05);
+    --shadow-2: 0 6px 20px rgba(17, 24, 39, 0.08);
+    --shadow-3: 0 24px 64px rgba(17, 24, 39, 0.18);
+
+    --focus: #2563eb;
+}
+
 /* The one place a real reduced-motion preference has to reach: every transition
- * and keyframe in this file. Vestibular triggers are not a nice-to-have. */
+ * and keyframe in these files. Vestibular triggers are not a nice-to-have. */
 @media (prefers-reduced-motion: reduce) {
     :root {
-        --transition-speed: 0s;
+        --speed: 0s;
     }
 
     *,

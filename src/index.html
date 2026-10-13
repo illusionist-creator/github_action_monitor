@@ -1,23 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>GitHub Actions Monitor</title>
     <meta name="description" content="Cross-repository monitoring, analytics and log forensics for GitHub Actions — a single static page." />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0c0f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3f4f7" media="(prefers-color-scheme: light)" />
     <meta name="referrer" content="no-referrer" />
     <!-- The page holds a personal access token in memory. The policy below means
          that even if markup were injected, script can only come from this
          document, and data can only be sent to api.github.com. -->
     <meta http-equiv="Content-Security-Policy"
         content="default-src 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://api.github.com https://*.githubusercontent.com; base-uri 'none'; form-action 'none'" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
         rel="stylesheet" />
     <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='3' fill='none' stroke='%233ecf8e' stroke-width='1.5'/%3E%3Cpath d='M8 2v2M8 12v2M2 8h2M12 8h2' stroke='%233ecf8e' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E" />
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233ecf8e'/%3E%3Cpath d='M7 17h5l3-8 4 14 3-6h3' fill='none' stroke='%23062b1b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <!-- Resolve the colour scheme before first paint, so a light-mode reader
+         never sees a dark flash. The toggle in the topbar overrides it for the
+         life of the tab; nothing is persisted, by design. -->
+    <script>try { document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; } catch (e) { /* stays dark */ }</script>
     <!-- Subresource integrity: a compromised CDN cannot swap this file for one
          that reads the token out of the page. If the hash fails the script
          simply does not run, and every chart falls back to its data table. -->
@@ -28,242 +35,305 @@
 </head>
 
 <body>
+    <!-- Icon sprite. Every icon on the page is a <use> of one of these, so the
+         markup stays tiny and icons recolour with currentColor. -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+        <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+        <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+        <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+        <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+        <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+        <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-5 4 3 5-7"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+        <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+        <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+        <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+        <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+        <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="m3 3 18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a10.6 10.6 0 0 0 4.2-.8"/></symbol>
+        <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+        <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+        <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+        <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></symbol>
+        <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+        <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12l-1 5a5 5 0 0 1-10 0z"/><path d="M12 18v4"/></symbol>
+        <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></symbol>
+        <symbol id="i-github" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.2-3.4-1.2-.4-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.2-4.6-1.1-4.6-4.9 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.5 9.5 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.8-2.3 4.7-4.6 4.9.4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></symbol>
+        <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></symbol>
+        <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-7a2 2 0 0 0-1.8-1H7.3a2 2 0 0 0-1.8 1z"/></symbol>
+        <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+        <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></symbol>
+    </svg>
+
     <a class="skip-link" href="#mainContent">Skip to dashboard</a>
 
-    <div class="layout">
+    <div class="app" id="app">
+        <div class="scrim" id="sidebarScrim"></div>
 
         <!-- ── Sidebar ── -->
-        <aside class="sidebar">
-            <div class="sidebar-logo">
-                <div class="logo-icon">
-                    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <circle cx="8" cy="8" r="3" stroke="#3ecf8e" stroke-width="1.5" />
-                        <path d="M8 2v2M8 12v2M2 8h2M12 8h2" stroke="#3ecf8e" stroke-width="1.5" stroke-linecap="round" />
-                    </svg>
+        <aside class="sidebar" id="sidebar" aria-label="Navigation">
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true">
+                    <svg class="ic"><use href="#i-activity"></use></svg>
                 </div>
-                <div>
-                    <div class="logo-text">Actions</div>
-                    <div class="logo-sub" id="logoSub">sample data</div>
+                <div class="brand-text">
+                    <div class="brand-name">Actions Monitor</div>
+                    <div class="brand-sub" id="logoSub">sample data</div>
                 </div>
+                <button class="icon-btn sidebar-close" id="sidebarClose" type="button" aria-label="Close menu">
+                    <svg class="ic"><use href="#i-x"></use></svg>
+                </button>
             </div>
 
-            <nav class="nav-section" aria-label="Views">
+            <nav class="nav" aria-label="Views">
                 <div class="nav-label" id="views-label">Views</div>
-                <div role="tablist" aria-labelledby="views-label" id="viewTabs">
+                <div role="tablist" aria-labelledby="views-label" aria-orientation="vertical" id="viewTabs">
                     <button class="nav-item" type="button" role="tab" aria-selected="true" data-tab="overview"
                         id="nav-overview" aria-controls="tab-overview">
-                        <span class="nav-dot dot-green" aria-hidden="true"></span>
-                        Overview
+                        <svg class="ic"><use href="#i-dashboard"></use></svg>
+                        <span class="nav-text">Overview</span>
+                        <span class="nav-key" aria-hidden="true">1</span>
                     </button>
                     <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="live"
                         id="nav-live" aria-controls="tab-live">
-                        <span class="nav-dot live-dot" aria-hidden="true"></span>
-                        Live now
+                        <svg class="ic"><use href="#i-play"></use></svg>
+                        <span class="nav-text">Live now</span>
                         <span class="nav-count" id="nav-live-count">0</span>
+                        <span class="nav-key" aria-hidden="true">2</span>
                     </button>
                     <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="repos"
                         id="nav-repos" aria-controls="tab-repos">
-                        <span class="nav-dot dot-blue" aria-hidden="true"></span>
-                        Repositories
+                        <svg class="ic"><use href="#i-folder"></use></svg>
+                        <span class="nav-text">Repositories</span>
                         <span class="nav-count" id="nav-repo-count">—</span>
+                        <span class="nav-key" aria-hidden="true">3</span>
                     </button>
                     <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="runs"
                         id="nav-runs" aria-controls="tab-runs">
-                        <span class="nav-dot dot-amber" aria-hidden="true"></span>
-                        All runs
+                        <svg class="ic"><use href="#i-list"></use></svg>
+                        <span class="nav-text">All runs</span>
+                        <span class="nav-key" aria-hidden="true">4</span>
                     </button>
                     <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="failures"
                         id="nav-failures" aria-controls="tab-failures">
-                        <span class="nav-dot dot-red" aria-hidden="true"></span>
-                        Failures
+                        <svg class="ic"><use href="#i-alert"></use></svg>
+                        <span class="nav-text">Failures</span>
                         <span class="nav-count" id="nav-fail-count">—</span>
+                        <span class="nav-key" aria-hidden="true">5</span>
                     </button>
                     <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="logs"
                         id="nav-logs" aria-controls="tab-logs">
-                        <span class="nav-dot dot-purple" aria-hidden="true"></span>
-                        Run logs
+                        <svg class="ic"><use href="#i-terminal"></use></svg>
+                        <span class="nav-text">Run logs</span>
                         <span class="nav-count" id="nav-logs-count">—</span>
+                        <span class="nav-key" aria-hidden="true">6</span>
                     </button>
                     <button class="nav-item" type="button" role="tab" aria-selected="false" data-tab="timeline"
                         id="nav-timeline" aria-controls="tab-timeline">
-                        <span class="nav-dot dot-purple" aria-hidden="true"></span>
-                        Timeline
+                        <svg class="ic"><use href="#i-chart"></use></svg>
+                        <span class="nav-text">Timeline</span>
+                        <span class="nav-key" aria-hidden="true">7</span>
                     </button>
                 </div>
             </nav>
 
-            <div class="nav-section">
-                <div class="nav-label">Repositories</div>
-                <div id="sidebar-repo-list"></div>
+            <div class="nav nav-repos">
+                <div class="nav-label-row">
+                    <div class="nav-label">Repositories</div>
+                    <span class="nav-hint" id="repoListHint">worst first</span>
+                </div>
+                <div id="sidebar-repo-list" class="repo-list"></div>
             </div>
 
-            <div class="sidebar-footer">
-                <form id="connectForm" autocomplete="off">
-                    <div class="token-input-wrap">
-                        <label class="token-label" for="tokenInput">GitHub token</label>
-                        <input class="token-input" type="password" id="tokenInput" name="token"
-                            placeholder="ghp_… or github_pat_…" autocomplete="off" autocorrect="off"
-                            autocapitalize="off" spellcheck="false"
-                            aria-describedby="tokenHelp" />
-                        <div class="token-label" id="tokenHelp" style="margin-top:4px;">
-                            Needs <code>actions:read</code> (fine-grained) or <code>repo</code> (classic).
-                            Stays in this tab; never stored or sent anywhere but api.github.com.
-                        </div>
-                    </div>
-                    <div class="token-input-wrap">
-                        <label class="token-label" for="orgInput">Owner or owner/repo (optional)</label>
-                        <input class="token-input" type="text" id="orgInput" name="owner"
-                            placeholder="octocat or octocat/hello-world" autocomplete="off" spellcheck="false" />
-                    </div>
-                    <button class="connect-btn" id="connectBtn" type="submit">Connect live data</button>
-                </form>
-                <button class="disconnect-btn" id="disconnectBtn" type="button">Disconnect</button>
-                <div class="sync-bar" id="syncBar" hidden><div class="sync-fill" id="syncFill"></div></div>
-                <div id="connectStatus" role="status"
-                    style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:5px;"></div>
-                <div class="rate-meter" id="rateMeter" hidden style="margin-top:8px;">
-                    <span>api</span>
-                    <div class="rate-track"><div class="rate-fill" id="rateFill"></div></div>
-                    <span id="rateLabel">—</span>
-                </div>
-            </div>
+            <div class="conn" id="connCard"></div>
         </aside>
 
         <!-- ── Main ── -->
         <main class="main" id="mainContent">
-            <div class="topbar">
-                <h1 class="topbar-title" id="topbar-title">Overview</h1>
+            <header class="topbar">
+                <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="Open menu"
+                    aria-controls="sidebar" aria-expanded="false">
+                    <svg class="ic"><use href="#i-menu"></use></svg>
+                </button>
+                <div class="topbar-title-wrap">
+                    <h1 class="topbar-title" id="topbar-title">Overview</h1>
+                    <div class="topbar-sub" id="topbar-sub"></div>
+                </div>
                 <div class="topbar-controls">
-                    <button class="refresh-btn" id="refreshBtn" type="button" title="Refresh data (r)">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                            <polyline points="23 4 23 10 17 10" />
-                            <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
-                        </svg>
-                        Refresh
+                    <button class="search-btn" id="cmdkBtn" type="button" aria-label="Search or jump to (Ctrl+K)">
+                        <svg class="ic"><use href="#i-search"></use></svg>
+                        <span class="search-text">Search or jump to…</span>
+                        <kbd>Ctrl K</kbd>
                     </button>
-                    <label class="sr-only" for="repoFilter">Repository</label>
-                    <select class="ctrl-select" id="repoFilter" data-state="repo">
-                        <option value="all">All repos</option>
-                    </select>
+                    <div class="segmented" role="group" aria-label="Time range" id="timeSegment">
+                        <button type="button" data-days="1" aria-pressed="false">24h</button>
+                        <button type="button" data-days="7" aria-pressed="true">7d</button>
+                        <button type="button" data-days="14" aria-pressed="false">14d</button>
+                        <button type="button" data-days="30" aria-pressed="false">30d</button>
+                        <button type="button" data-days="90" aria-pressed="false">90d</button>
+                    </div>
                     <label class="sr-only" for="timeFilter">Time range</label>
-                    <select class="ctrl-select" id="timeFilter" data-state="days">
+                    <select class="select select-mobile" id="timeFilter" data-state="days">
                         <option value="1">Last 24 hours</option>
                         <option value="7">Last 7 days</option>
                         <option value="14">Last 14 days</option>
                         <option value="30">Last 30 days</option>
                         <option value="90">Last 90 days</option>
                     </select>
+                    <label class="sr-only" for="repoFilter">Repository</label>
+                    <select class="select" id="repoFilter" data-state="repo">
+                        <option value="all">All repositories</option>
+                    </select>
+                    <button class="icon-btn" id="refreshBtn" type="button" title="Refresh data (r)" aria-label="Refresh data">
+                        <svg class="ic"><use href="#i-refresh"></use></svg>
+                    </button>
+                    <button class="icon-btn" id="themeBtn" type="button" title="Switch theme (t)" aria-label="Switch to light theme">
+                        <svg class="ic"><use href="#i-sun"></use></svg>
+                    </button>
                     <div class="live-badge demo-mode" id="liveBadge">
-                        <div class="live-dot" aria-hidden="true"></div><span id="liveBadgeText">sample</span>
+                        <span class="live-dot" aria-hidden="true"></span><span id="liveBadgeText">sample</span>
                     </div>
                 </div>
-            </div>
+                <div class="sync-bar" id="syncBar" hidden><div class="sync-fill" id="syncFill"></div></div>
+            </header>
 
             <div class="content" id="contentArea">
 
                 <div class="sample-banner" id="mainOverlay">
-                    <div class="sample-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" />
-                            <path d="M7 11V7a5 5 0 0110 0v4" />
-                        </svg>
+                    <svg class="ic" aria-hidden="true"><use href="#i-sparkles"></use></svg>
+                    <div class="grow">
+                        <strong>You are looking at sample data.</strong>
+                        Every number is generated. Connect a token to monitor your own repositories — it stays in this tab and is never stored.
                     </div>
-                    <div style="flex:1;min-width:0;">
-                        <div class="sample-title">You are looking at sample data</div>
-                        <div class="sample-sub">Every number below is generated. Add a token in the sidebar to
-                            monitor your own repositories — it stays in this tab.</div>
-                    </div>
-                    <button class="logs-btn" id="dismissOverlay" type="button">Dismiss</button>
+                    <button class="btn btn-sm btn-primary" type="button" data-action="open-connect">
+                        <svg class="ic"><use href="#i-github"></use></svg> Connect GitHub
+                    </button>
+                    <button class="btn btn-sm btn-ghost" id="dismissOverlay" type="button">Dismiss</button>
                 </div>
 
                 <!-- ── Overview ── -->
                 <section class="tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="nav-overview"
                     tabindex="-1">
+                    <div id="verdictBar"></div>
                     <div class="metrics" id="metricsRow"></div>
 
-                    <div class="two-col section">
+                    <div class="grid grid-2 section">
                         <div class="card">
-                            <div class="card-title">run outcomes</div>
-                            <div class="chart-wrap" style="height:200px;">
-                                <canvas id="outcomeChart" role="img"
-                                    aria-label="Share of runs by outcome"></canvas>
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Run outcomes</h2>
+                                    <p class="card-sub">Share of runs by result</p>
+                                </div>
                             </div>
-                            <div class="legend" id="outcomeLegend" style="margin-top:12px;"></div>
+                            <div class="chart-wrap" style="height:210px;">
+                                <canvas id="outcomeChart" role="img" aria-label="Share of runs by outcome"></canvas>
+                            </div>
+                            <div class="legend" id="outcomeLegend"></div>
                         </div>
                         <div class="card">
-                            <div class="card-title">daily run volume</div>
-                            <div class="chart-wrap" style="height:200px;">
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Daily run volume</h2>
+                                    <p class="card-sub">Runs started per day, stacked by result</p>
+                                </div>
+                            </div>
+                            <div class="chart-wrap" style="height:210px;">
                                 <canvas id="volumeChart" role="img" aria-label="Runs started per day"></canvas>
                             </div>
-                            <div class="legend" id="volumeLegend" style="margin-top:12px;"></div>
+                            <div class="legend" id="volumeLegend"></div>
                         </div>
                     </div>
 
                     <div class="card section">
-                        <div class="card-title">average duration trend by workflow</div>
-                        <div class="legend" id="durationLegend" style="margin-bottom:12px;"></div>
-                        <div class="chart-wrap" style="height:220px;">
+                        <div class="card-head">
+                            <div>
+                                <h2 class="card-title">Duration trend by workflow</h2>
+                                <p class="card-sub">Average successful run per day — the five workflows that consume the most compute</p>
+                            </div>
+                        </div>
+                        <div class="legend" id="durationLegend" style="margin:0 0 12px;"></div>
+                        <div class="chart-wrap" style="height:240px;">
                             <canvas id="durationChart" role="img"
                                 aria-label="Average successful run duration per day, one line per workflow"></canvas>
                         </div>
                     </div>
 
                     <div class="card section">
-                        <div class="section-head" style="margin-bottom:16px;">
+                        <div class="card-head">
                             <div>
-                                <div class="card-title" style="margin-bottom:2px;">repository health</div>
-                                <div class="section-sub">reliability 60% · speed 20% · recovery 20%</div>
+                                <h2 class="card-title">Repository health</h2>
+                                <p class="card-sub">60% reliability · 20% speed · 20% recovery — expand a row for the breakdown</p>
                             </div>
                         </div>
                         <div class="repo-grid" id="overviewRepoGrid"></div>
                     </div>
 
                     <div class="card section">
-                        <div class="section-head" style="margin-bottom:16px;">
+                        <div class="card-head">
                             <div>
-                                <div class="card-title" style="margin-bottom:2px;">workflow efficiency matrix</div>
-                                <div class="section-sub">each cell is one repository × workflow</div>
+                                <h2 class="card-title">Workflow efficiency matrix</h2>
+                                <p class="card-sub">Each cell is one repository × workflow</p>
                             </div>
-                            <label class="sr-only" for="matrixMetric">Matrix metric</label>
-                            <select class="ctrl-select" id="matrixMetric" data-state="metric">
-                                <option value="success">success rate</option>
-                                <option value="duration">avg duration</option>
-                                <option value="queue">queue wait</option>
-                                <option value="runs">run volume</option>
-                            </select>
+                            <div class="card-actions">
+                                <label class="sr-only" for="matrixMetric">Matrix metric</label>
+                                <select class="select" id="matrixMetric" data-state="metric">
+                                    <option value="success">Success rate</option>
+                                    <option value="duration">Average duration</option>
+                                    <option value="queue">Queue wait</option>
+                                    <option value="runs">Run volume</option>
+                                </select>
+                            </div>
                         </div>
-                        <div id="matrixWrap" style="overflow-x:auto;"></div>
-                        <div class="legend" id="matrixLegend" style="margin-top:14px;"></div>
+                        <div id="matrixWrap" class="matrix-wrap"></div>
+                        <div class="legend" id="matrixLegend"></div>
                     </div>
 
-                    <div class="two-col section" style="align-items:start;">
+                    <div class="grid grid-3 section">
                         <div class="card">
-                            <div class="section-head" style="margin-bottom:14px;">
-                                <div class="card-title" style="margin-bottom:0;">ci pulse</div>
-                                <span class="section-sub">notable events</span>
-                            </div>
-                            <div id="ciPulseFeed"></div>
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:16px;">
-                            <div class="card">
-                                <div class="card-title">green streaks</div>
-                                <div id="streakGrid" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;"></div>
-                            </div>
-                            <div class="card">
-                                <div class="card-title">top time sinks</div>
-                                <div id="timeSinks" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="two-col section" style="align-items:start;">
-                        <div class="card">
-                            <div class="section-head" style="margin-bottom:14px;">
+                            <div class="card-head">
                                 <div>
-                                    <div class="card-title" style="margin-bottom:2px;">recovery time</div>
-                                    <div class="section-sub">median minutes from first red to next green</div>
+                                    <h2 class="card-title">CI pulse</h2>
+                                    <p class="card-sub">Failures and outliers, newest first</p>
+                                </div>
+                            </div>
+                            <div id="ciPulseFeed" class="pulse-list"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Green streaks</h2>
+                                    <p class="card-sub">Consecutive passing runs per repository</p>
+                                </div>
+                            </div>
+                            <div id="streakGrid"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Top time sinks</h2>
+                                    <p class="card-sub">Workflows by total compute</p>
+                                </div>
+                            </div>
+                            <div id="timeSinks"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-2 section">
+                        <div class="card">
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Recovery time</h2>
+                                    <p class="card-sub">Mean minutes from the first red run to the next green</p>
                                 </div>
                             </div>
                             <div class="chart-wrap" style="height:240px;">
@@ -272,56 +342,65 @@
                             </div>
                         </div>
                         <div class="card">
-                            <div class="section-head" style="margin-bottom:10px;">
+                            <div class="card-head">
                                 <div>
-                                    <div class="card-title" style="margin-bottom:2px;">compute burn rate</div>
-                                    <div class="section-sub">minutes consumed per day</div>
+                                    <h2 class="card-title">Compute burn rate</h2>
+                                    <p class="card-sub">Minutes consumed per day</p>
                                 </div>
                             </div>
-                            <div class="chart-wrap" style="height:140px;">
+                            <div class="chart-wrap" style="height:150px;">
                                 <canvas id="burnRateChart" role="img"
                                     aria-label="Compute minutes consumed per day"></canvas>
                             </div>
-                            <div id="burnRateStats"
-                                style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;"></div>
+                            <div id="burnRateStats" class="burn-stats"></div>
                         </div>
                     </div>
 
                     <div class="card section">
-                        <div class="section-head" style="margin-bottom:0;">
+                        <div class="card-head">
                             <div>
-                                <div class="card-title" style="margin-bottom:2px;">activity heatmap — day × hour</div>
-                                <div class="section-sub">local time</div>
+                                <h2 class="card-title">Activity heatmap</h2>
+                                <p class="card-sub">Day of week × hour, in your local time</p>
                             </div>
-                            <div style="display:flex;gap:6px;">
+                            <div class="card-actions">
                                 <label class="sr-only" for="heatRepo">Heatmap repository</label>
-                                <select class="ctrl-select" id="heatRepo" data-state="heatRepo">
-                                    <option value="all">all repos</option>
+                                <select class="select" id="heatRepo" data-state="heatRepo">
+                                    <option value="all">All repositories</option>
                                 </select>
                                 <label class="sr-only" for="heatMetric">Heatmap metric</label>
-                                <select class="ctrl-select" id="heatMetric" data-state="heatMetric">
-                                    <option value="runs">run count</option>
-                                    <option value="duration">avg duration</option>
-                                    <option value="queue">avg queue wait</option>
-                                    <option value="failures">failures</option>
+                                <select class="select" id="heatMetric" data-state="heatMetric">
+                                    <option value="runs">Run count</option>
+                                    <option value="duration">Average duration</option>
+                                    <option value="queue">Average queue wait</option>
+                                    <option value="failures">Failures</option>
                                 </select>
                             </div>
                         </div>
-                        <div id="heatmapArea" style="margin-top:16px;overflow-x:auto;"></div>
+                        <div id="heatmapArea"></div>
                         <div class="heat-legend" id="heatLegend"></div>
                     </div>
 
-                    <div class="two-col section">
+                    <div class="grid grid-2 section">
                         <div class="card">
-                            <div class="card-title">queue wait vs execution</div>
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Queue wait vs execution</h2>
+                                    <p class="card-sub">Weekly averages over the last four weeks, whatever the window</p>
+                                </div>
+                            </div>
                             <div class="chart-wrap" style="height:220px;">
                                 <canvas id="queueChart" role="img"
                                     aria-label="Average queue wait and execution time per week"></canvas>
                             </div>
-                            <div class="legend" id="queueLegend" style="margin-top:10px;"></div>
+                            <div class="legend" id="queueLegend"></div>
                         </div>
                         <div class="card">
-                            <div class="card-title">p95 duration by workflow</div>
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">p95 duration by workflow</h2>
+                                    <p class="card-sub">The slow tail, not the average</p>
+                                </div>
+                            </div>
                             <div class="chart-wrap" style="height:220px;">
                                 <canvas id="p95Chart" role="img"
                                     aria-label="95th percentile duration per workflow"></canvas>
@@ -332,131 +411,159 @@
 
                 <!-- ── Live ── -->
                 <section class="tab-panel" id="tab-live" role="tabpanel" aria-labelledby="nav-live" tabindex="-1">
-                    <div class="section-head" style="margin-bottom:18px;">
+                    <div class="page-head">
                         <div>
-                            <div class="card-title" style="margin-bottom:2px;">running right now</div>
-                            <div class="section-sub" id="livePollNote">progress estimated from each workflow's own median</div>
+                            <h2 class="page-title">Running right now</h2>
+                            <p class="page-sub" id="livePollNote"></p>
                         </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
+                        <div class="page-actions">
                             <label class="sr-only" for="liveRepoFilter">Live repository filter</label>
-                            <select class="ctrl-select" id="liveRepoFilter"><option value="all">all repos</option></select>
-                            <button class="logs-btn" id="liveRefreshBtn" type="button">refresh</button>
+                            <select class="select" id="liveRepoFilter"><option value="all">All repositories</option></select>
+                            <button class="btn btn-sm" id="liveRefreshBtn" type="button">
+                                <svg class="ic"><use href="#i-refresh"></use></svg> Poll now
+                            </button>
                         </div>
                     </div>
 
-                    <div class="metrics" id="liveMetrics" style="margin-bottom:20px;"></div>
+                    <div class="metrics metrics-4" id="liveMetrics"></div>
 
                     <div class="card section">
-                        <div class="section-head" style="margin-bottom:14px;">
-                            <span class="card-title" style="margin-bottom:0;">active runs</span>
-                            <span class="section-sub" id="liveRunCount"></span>
-                        </div>
-                        <div id="liveRunsList" style="display:flex;flex-direction:column;gap:10px;"></div>
-                    </div>
-
-                    <div class="card section">
-                        <div class="section-head" style="margin-bottom:14px;">
+                        <div class="card-head">
                             <div>
-                                <div class="card-title" style="margin-bottom:2px;">just finished</div>
-                                <div class="section-sub">completed in the last 15 minutes</div>
+                                <h2 class="card-title">Active runs</h2>
+                                <p class="card-sub" id="liveRunCount"></p>
                             </div>
                         </div>
-                        <div id="liveRecentList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                        <div id="liveRunsList" class="stack"></div>
+                    </div>
+
+                    <div class="card section">
+                        <div class="card-head">
+                            <div>
+                                <h2 class="card-title">Just finished</h2>
+                                <p class="card-sub">Completed in the last 15 minutes</p>
+                            </div>
+                        </div>
+                        <div id="liveRecentList" class="stack-sm"></div>
                     </div>
                 </section>
 
                 <!-- ── Repositories ── -->
                 <section class="tab-panel" id="tab-repos" role="tabpanel" aria-labelledby="nav-repos" tabindex="-1">
-                    <div class="section">
-                        <div class="section-head">
-                            <span class="section-title">repository breakdown</span>
-                            <div style="display:flex;gap:6px;align-items:center;">
-                                <label class="section-sub" for="repoSort">sort by</label>
-                                <select class="ctrl-select" id="repoSort" data-state="sort">
-                                    <option value="health">health</option>
-                                    <option value="runs">runs</option>
-                                    <option value="compute">compute</option>
-                                    <option value="failures">failures</option>
-                                    <option value="duration">duration</option>
-                                    <option value="queue">queue wait</option>
-                                </select>
-                            </div>
+                    <div class="page-head">
+                        <div>
+                            <h2 class="page-title">Repository breakdown</h2>
+                            <p class="page-sub" id="reposSub">Expand a repository for its score breakdown and workflows</p>
                         </div>
-                        <div class="repo-grid" id="reposTabGrid"></div>
+                        <div class="page-actions">
+                            <label class="label-inline" for="repoSort">Sort by</label>
+                            <select class="select" id="repoSort" data-state="sort">
+                                <option value="health">Health (worst first)</option>
+                                <option value="runs">Most runs</option>
+                                <option value="compute">Most compute</option>
+                                <option value="failures">Most failures</option>
+                                <option value="duration">Slowest p95</option>
+                                <option value="queue">Longest queue</option>
+                            </select>
+                        </div>
                     </div>
+                    <div class="repo-grid" id="reposTabGrid"></div>
                 </section>
 
                 <!-- ── All runs ── -->
                 <section class="tab-panel" id="tab-runs" role="tabpanel" aria-labelledby="nav-runs" tabindex="-1">
                     <div class="card section">
-                        <div class="section-head">
-                            <span class="card-title" style="margin-bottom:0;">all workflow runs</span>
-                            <span class="section-sub" id="runsCount"></span>
+                        <div class="card-head">
+                            <div>
+                                <h2 class="card-title">All workflow runs</h2>
+                                <p class="card-sub" id="runsCount"></p>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn btn-sm" type="button" data-action="export-runs" id="exportRunsBtn">
+                                    <svg class="ic"><use href="#i-download"></use></svg> Export CSV
+                                </button>
+                            </div>
                         </div>
-                        <div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap;">
+                        <div class="toolbar" style="margin-bottom:14px;">
+                            <div class="search-field">
+                                <svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg>
+                                <input class="input" type="search" id="runsSearch" autocomplete="off" spellcheck="false"
+                                    placeholder="Filter by workflow, repository, branch, actor or commit…"
+                                    aria-label="Filter runs" />
+                            </div>
                             <label class="sr-only" for="runsStatusFilter">Status</label>
-                            <select class="ctrl-select" id="runsStatusFilter" data-state="status">
-                                <option value="all">all statuses</option>
-                                <option value="success">success</option>
-                                <option value="failed">failed</option>
-                                <option value="in_progress">running</option>
-                                <option value="cancelled">cancelled</option>
-                                <option value="skipped">skipped</option>
+                            <select class="select" id="runsStatusFilter" data-state="status">
+                                <option value="all">Any status</option>
+                                <option value="success">Success</option>
+                                <option value="failed">Failed</option>
+                                <option value="in_progress">Running</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="skipped">Skipped</option>
                             </select>
                             <label class="sr-only" for="runsWfFilter">Workflow</label>
-                            <select class="ctrl-select" id="runsWfFilter" data-state="workflow">
-                                <option value="all">all workflows</option>
+                            <select class="select" id="runsWfFilter" data-state="workflow">
+                                <option value="all">Any workflow</option>
                             </select>
                         </div>
-                        <div class="runs-table-wrap">
-                            <table class="runs-table">
+                        <div class="table-wrap">
+                            <table class="table runs-table">
                                 <caption class="sr-only">Workflow runs in the selected window</caption>
                                 <thead>
                                     <tr>
-                                        <th scope="col">status</th>
-                                        <th scope="col">workflow</th>
-                                        <th scope="col">repository</th>
-                                        <th scope="col">branch</th>
-                                        <th scope="col">duration</th>
-                                        <th scope="col">queued</th>
-                                        <th scope="col">ran</th>
-                                        <th scope="col" style="text-align:right;">logs</th>
+                                        <th scope="col" data-sort="status" aria-sort="none">Status</th>
+                                        <th scope="col" data-sort="wf" aria-sort="none">Workflow</th>
+                                        <th scope="col" data-sort="repo" aria-sort="none">Repository</th>
+                                        <th scope="col" data-sort="branch" aria-sort="none">Branch</th>
+                                        <th scope="col" data-sort="dur" aria-sort="none">Duration</th>
+                                        <th scope="col" data-sort="queue" aria-sort="none">Queued</th>
+                                        <th scope="col" data-sort="ts" aria-sort="descending">Started</th>
+                                        <th scope="col" class="td-right">Logs</th>
                                     </tr>
                                 </thead>
                                 <tbody id="runsTableBody"></tbody>
                             </table>
                         </div>
-                        <div id="runsMore" style="margin-top:12px;"></div>
+                        <div id="runsMore" class="table-foot"></div>
                     </div>
                 </section>
 
                 <!-- ── Failures ── -->
                 <section class="tab-panel" id="tab-failures" role="tabpanel" aria-labelledby="nav-failures"
                     tabindex="-1">
-                    <div class="two-col section">
+                    <div class="metrics metrics-4" id="failSummary"></div>
+                    <div class="grid grid-2 section">
                         <div class="card">
-                            <div class="card-title">failures by workflow category</div>
-                            <div class="chart-wrap" style="height:200px;">
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Failures by workflow category</h2>
+                                    <p class="card-sub">Categorised from the workflow name — a heuristic, not log analysis</p>
+                                </div>
+                            </div>
+                            <div class="chart-wrap" style="height:210px;">
                                 <canvas id="failCatChart" role="img"
                                     aria-label="Failure count per workflow category"></canvas>
                             </div>
-                            <div class="section-sub" style="margin-top:8px;">
-                                categorised from the workflow name — a heuristic, not log analysis
-                            </div>
                         </div>
                         <div class="card">
-                            <div class="card-title">flaky vs sticky failures</div>
-                            <div class="chart-wrap" style="height:200px;">
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Flaky vs sticky</h2>
+                                    <p class="card-sub">Flaky: the same commit also passed, or green on both sides</p>
+                                </div>
+                            </div>
+                            <div class="chart-wrap" style="height:210px;">
                                 <canvas id="flakyChart" role="img"
                                     aria-label="Flaky versus sticky failures"></canvas>
                             </div>
-                            <div class="legend" id="flakyLegend" style="margin-top:12px;"></div>
+                            <div class="legend" id="flakyLegend"></div>
                         </div>
                     </div>
                     <div class="section">
-                        <div class="section-head">
-                            <span class="section-title">recent failures</span>
-                            <span class="section-sub" id="failuresCount"></span>
+                        <div class="page-head">
+                            <div>
+                                <h2 class="page-title">Recent failures</h2>
+                                <p class="page-sub" id="failuresCount"></p>
+                            </div>
                         </div>
                         <div class="failure-cards" id="failureCards"></div>
                     </div>
@@ -464,89 +571,109 @@
 
                 <!-- ── Run logs ── -->
                 <section class="tab-panel" id="tab-logs" role="tabpanel" aria-labelledby="nav-logs" tabindex="-1">
-                    <div class="card section">
-                        <div class="section-head">
-                            <div>
-                                <div class="section-title">last run · every repository</div>
-                                <div class="section-sub">job and step breakdown for the newest run in each repo</div>
-                            </div>
-                            <div class="rlog-bar" style="margin-bottom:0;">
-                                <label class="sr-only" for="logsRunPick">Which run</label>
-                                <select class="ctrl-select" id="logsRunPick" data-state="runPick">
-                                    <option value="latest">latest run</option>
-                                    <option value="completed">latest completed run</option>
-                                </select>
-                                <label class="sr-only" for="logsScopeFilter">Scope</label>
-                                <select class="ctrl-select" id="logsScopeFilter" data-state="scope">
-                                    <option value="all">all repos</option>
-                                    <option value="failed">failed only</option>
-                                    <option value="attention">failed or running</option>
-                                </select>
-                                <button class="logs-btn" id="logsReloadBtn" type="button">reload all</button>
-                            </div>
+                    <div class="page-head">
+                        <div>
+                            <h2 class="page-title">Last run in every repository</h2>
+                            <p class="page-sub">Jobs, steps and failure annotations for the newest run in each repo</p>
                         </div>
-                        <div class="rlog-bar"><span class="rlog-prog" id="logsProgress"></span></div>
-                        <div id="logsRepoList"></div>
+                        <div class="page-actions">
+                            <label class="sr-only" for="logsRunPick">Which run</label>
+                            <select class="select" id="logsRunPick" data-state="runPick">
+                                <option value="latest">Latest run</option>
+                                <option value="completed">Latest completed run</option>
+                            </select>
+                            <label class="sr-only" for="logsScopeFilter">Scope</label>
+                            <select class="select" id="logsScopeFilter" data-state="scope">
+                                <option value="all">All repositories</option>
+                                <option value="failed">Failed only</option>
+                                <option value="attention">Failed or running</option>
+                            </select>
+                            <button class="btn btn-sm" id="logsReloadBtn" type="button">
+                                <svg class="ic"><use href="#i-refresh"></use></svg> Reload all
+                            </button>
+                        </div>
                     </div>
+                    <div class="rlog-prog" id="logsProgress"></div>
+                    <div id="logsRepoList" class="stack-sm"></div>
                 </section>
 
                 <!-- ── Timeline ── -->
                 <section class="tab-panel" id="tab-timeline" role="tabpanel" aria-labelledby="nav-timeline"
                     tabindex="-1">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
-                        <label class="sr-only" for="tlWfFilter">Workflow</label>
-                        <select class="ctrl-select" id="tlWfFilter" data-state="workflow">
-                            <option value="all">all workflows</option>
-                        </select>
-                        <label class="sr-only" for="tlStatusFilter">Status</label>
-                        <select class="ctrl-select" id="tlStatusFilter" data-state="status">
-                            <option value="all">all statuses</option>
-                            <option value="success">success</option>
-                            <option value="failed">failed</option>
-                            <option value="cancelled">cancelled</option>
-                        </select>
-                        <label class="sr-only" for="tlGroup">Colour by</label>
-                        <select class="ctrl-select" id="tlGroup" data-state="group">
-                            <option value="workflow">colour by workflow</option>
-                            <option value="repo">colour by repo</option>
-                            <option value="status">colour by status</option>
-                        </select>
+                    <div class="page-head">
+                        <div>
+                            <h2 class="page-title">Timeline &amp; runtimes</h2>
+                            <p class="page-sub">Every run in the window, plotted by start time</p>
+                        </div>
+                        <div class="page-actions">
+                            <label class="sr-only" for="tlWfFilter">Workflow</label>
+                            <select class="select" id="tlWfFilter" data-state="workflow">
+                                <option value="all">Any workflow</option>
+                            </select>
+                            <label class="sr-only" for="tlStatusFilter">Status</label>
+                            <select class="select" id="tlStatusFilter" data-state="status">
+                                <option value="all">Any status</option>
+                                <option value="success">Success</option>
+                                <option value="failed">Failed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                            <label class="sr-only" for="tlGroup">Colour by</label>
+                            <select class="select" id="tlGroup" data-state="group">
+                                <option value="workflow">Colour by workflow</option>
+                                <option value="repo">Colour by repository</option>
+                                <option value="status">Colour by status</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="card section">
-                        <div class="section-head">
-                            <span class="card-title" style="margin-bottom:0;">start time vs runtime</span>
-                            <span class="section-sub">each point is one run, joined in time order</span>
+                        <div class="card-head">
+                            <div>
+                                <h2 class="card-title">Start time vs runtime</h2>
+                                <p class="card-sub">Each point is one run, joined in time order</p>
+                            </div>
                         </div>
-                        <div class="legend" id="tlScatterLegend" style="margin-bottom:12px;"></div>
-                        <div class="chart-wrap" style="height:320px;">
+                        <div class="legend" id="tlScatterLegend" style="margin:0 0 12px;"></div>
+                        <div class="chart-wrap" style="height:340px;">
                             <canvas id="tlScatterChart" role="img"
                                 aria-label="Line chart: run start time on the x axis, runtime in minutes on the y axis"></canvas>
                         </div>
                     </div>
 
                     <div class="card section">
-                        <div class="section-head">
-                            <span class="card-title" style="margin-bottom:0;">runtime trend per workflow</span>
-                            <span class="section-sub">daily average of successful runs</span>
+                        <div class="card-head">
+                            <div>
+                                <h2 class="card-title">Runtime trend per workflow</h2>
+                                <p class="card-sub">Daily average of successful runs</p>
+                            </div>
                         </div>
-                        <div class="legend" id="tlSwimLegend" style="margin-bottom:12px;"></div>
+                        <div class="legend" id="tlSwimLegend" style="margin:0 0 12px;"></div>
                         <div class="chart-wrap" style="height:280px;">
                             <canvas id="tlSwimChart" role="img"
                                 aria-label="Daily average runtime per workflow"></canvas>
                         </div>
                     </div>
 
-                    <div class="two-col section">
+                    <div class="grid grid-2 section">
                         <div class="card">
-                            <div class="card-title">cumulative runtime by repo</div>
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Cumulative runtime by repository</h2>
+                                    <p class="card-sub">Total minutes in the window</p>
+                                </div>
+                            </div>
                             <div class="chart-wrap" style="height:220px;">
                                 <canvas id="tlCumRepoChart" role="img"
                                     aria-label="Total compute minutes per repository"></canvas>
                             </div>
                         </div>
                         <div class="card">
-                            <div class="card-title">runtime distribution</div>
+                            <div class="card-head">
+                                <div>
+                                    <h2 class="card-title">Runtime distribution</h2>
+                                    <p class="card-sub">How long runs usually take</p>
+                                </div>
+                            </div>
                             <div class="chart-wrap" style="height:220px;">
                                 <canvas id="tlHistChart" role="img"
                                     aria-label="Histogram of run durations"></canvas>
@@ -555,22 +682,24 @@
                     </div>
 
                     <div class="card section">
-                        <div class="section-head">
-                            <span class="card-title" style="margin-bottom:0;">longest individual runs</span>
-                            <span class="section-sub">top 20 by duration</span>
+                        <div class="card-head">
+                            <div>
+                                <h2 class="card-title">Longest individual runs</h2>
+                                <p class="card-sub">Top 20 by duration, compared with the median run</p>
+                            </div>
                         </div>
-                        <div class="runs-table-wrap">
-                            <table class="runs-table">
+                        <div class="table-wrap">
+                            <table class="table runs-table">
                                 <caption class="sr-only">The twenty longest runs in the selected window</caption>
                                 <thead>
                                     <tr>
                                         <th scope="col">#</th>
-                                        <th scope="col">workflow</th>
-                                        <th scope="col">repository</th>
-                                        <th scope="col">branch</th>
-                                        <th scope="col">status</th>
-                                        <th scope="col">started</th>
-                                        <th scope="col">duration</th>
+                                        <th scope="col">Workflow</th>
+                                        <th scope="col">Repository</th>
+                                        <th scope="col">Branch</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Started</th>
+                                        <th scope="col">Duration</th>
                                         <th scope="col">vs median</th>
                                     </tr>
                                 </thead>
@@ -582,21 +711,121 @@
 
             </div><!-- /content -->
         </main>
-    </div><!-- /layout -->
+    </div><!-- /app -->
 
-    <!-- ── Run logs modal ── -->
-    <div class="log-modal" id="logModal" role="dialog" aria-modal="true" aria-labelledby="logTitle" hidden>
-        <div class="log-backdrop" id="logBackdrop"></div>
+    <!-- ── Run logs slide-over ── -->
+    <div class="modal" id="logModal" role="dialog" aria-modal="true" aria-labelledby="logTitle" hidden>
+        <div class="modal-backdrop" id="logBackdrop"></div>
         <div class="log-panel">
             <div class="log-head">
                 <div class="log-head-row">
-                    <h2 class="log-title" id="logTitle">run logs</h2>
-                    <button class="log-close" id="logClose" type="button" aria-label="Close logs">✕</button>
+                    <h2 class="log-title" id="logTitle">Run logs</h2>
+                    <button class="icon-btn" id="logClose" type="button" aria-label="Close logs">
+                        <svg class="ic"><use href="#i-x"></use></svg>
+                    </button>
                 </div>
                 <div class="log-meta" id="logMeta"></div>
             </div>
             <div class="log-body" id="logBody"></div>
             <div class="log-foot" id="logFoot"></div>
+        </div>
+    </div>
+
+    <!-- ── Connect dialog ── -->
+    <div class="modal" id="connectModal" role="dialog" aria-modal="true" aria-labelledby="connectTitle" hidden>
+        <div class="modal-backdrop" data-close="connectModal"></div>
+        <div class="modal-panel">
+            <div class="modal-head">
+                <h2 class="modal-title" id="connectTitle">
+                    <svg class="ic"><use href="#i-github"></use></svg> Connect to GitHub
+                </h2>
+                <button class="icon-btn" type="button" data-close="connectModal" aria-label="Close">
+                    <svg class="ic"><use href="#i-x"></use></svg>
+                </button>
+            </div>
+            <form id="connectForm" class="modal-body" autocomplete="off">
+                <div class="field">
+                    <label class="field-label" for="tokenInput">Personal access token</label>
+                    <div class="field-row">
+                        <input class="input mono" type="password" id="tokenInput" name="token"
+                            placeholder="ghp_… or github_pat_…" autocomplete="off" autocorrect="off"
+                            autocapitalize="off" spellcheck="false" aria-describedby="tokenHelp" />
+                        <button class="icon-btn" type="button" id="tokenReveal" aria-label="Show token" aria-pressed="false">
+                            <svg class="ic"><use href="#i-eye"></use></svg>
+                        </button>
+                    </div>
+                    <div class="field-help" id="tokenHelp">
+                        Fine-grained token: <b>Actions: read</b> and <b>Metadata: read</b>, with repository access
+                        granted — a token with none sees nothing. Classic token: <code>repo</code>, or
+                        <code>public_repo</code> for public repositories only.
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="field-label" for="orgInput">Scope <span class="faint">(optional)</span></label>
+                    <input class="input mono" type="text" id="orgInput" name="owner"
+                        placeholder="octocat or octocat/hello-world" autocomplete="off" spellcheck="false" />
+                    <div class="field-help">An owner, or one <code>owner/repo</code>. Leave empty for every repository the token can see.</div>
+                </div>
+                <div class="privacy-note">
+                    <svg class="ic"><use href="#i-lock"></use></svg>
+                    <div>The token lives in this tab's memory and nowhere else — no storage, no cookies, nothing sent
+                        anywhere but <code>api.github.com</code>. Closing the tab is a complete logout.</div>
+                </div>
+                <div id="connectStatus" class="form-status" role="status"></div>
+                <div class="modal-actions">
+                    <button class="btn" type="button" data-close="connectModal">Cancel</button>
+                    <button class="btn btn-primary" id="connectBtn" type="submit">Connect</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Command palette ── -->
+    <div class="modal" id="cmdk" role="dialog" aria-modal="true" aria-label="Command palette" hidden>
+        <div class="modal-backdrop" data-close="cmdk"></div>
+        <div class="cmdk-panel">
+            <div class="cmdk-input-row">
+                <svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg>
+                <input class="cmdk-input" id="cmdkInput" type="text" autocomplete="off" spellcheck="false"
+                    placeholder="Jump to a view, focus a repository, change the window…"
+                    role="combobox" aria-expanded="true" aria-controls="cmdkList" aria-autocomplete="list" />
+                <kbd>esc</kbd>
+            </div>
+            <div class="cmdk-list" id="cmdkList" role="listbox" aria-label="Commands"></div>
+            <div class="cmdk-foot">
+                <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+                <span><kbd>↵</kbd> select</span>
+                <span><kbd>esc</kbd> close</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Keyboard shortcuts ── -->
+    <div class="modal" id="shortcutsModal" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle" hidden>
+        <div class="modal-backdrop" data-close="shortcutsModal"></div>
+        <div class="modal-panel">
+            <div class="modal-head">
+                <h2 class="modal-title" id="shortcutsTitle">
+                    <svg class="ic"><use href="#i-keyboard"></use></svg> Keyboard shortcuts
+                </h2>
+                <button class="icon-btn" type="button" data-close="shortcutsModal" aria-label="Close">
+                    <svg class="ic"><use href="#i-x"></use></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcut-grid">
+                    <div class="shortcut"><span>Command palette</span><span class="keys"><kbd>Ctrl</kbd><kbd>K</kbd></span></div>
+                    <div class="shortcut"><span>Search / jump</span><span class="keys"><kbd>/</kbd></span></div>
+                    <div class="shortcut"><span>Switch view</span><span class="keys"><kbd>1</kbd>–<kbd>7</kbd></span></div>
+                    <div class="shortcut"><span>Refresh data</span><span class="keys"><kbd>r</kbd></span></div>
+                    <div class="shortcut"><span>Toggle theme</span><span class="keys"><kbd>t</kbd></span></div>
+                    <div class="shortcut"><span>Connect GitHub</span><span class="keys"><kbd>c</kbd></span></div>
+                    <div class="shortcut"><span>This list</span><span class="keys"><kbd>?</kbd></span></div>
+                    <div class="shortcut"><span>Close dialog</span><span class="keys"><kbd>esc</kbd></span></div>
+                    <div class="shortcut"><span>Open a run's logs</span><span class="keys"><kbd>↵</kbd> on a row</span></div>
+                    <div class="shortcut"><span>Move between views</span><span class="keys"><kbd>↑</kbd><kbd>↓</kbd> in the sidebar</span></div>
+                </div>
+            </div>
         </div>
     </div>
 

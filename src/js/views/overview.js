@@ -1,33 +1,35 @@
 import {
   activityMatrix,
-  categorizeFailure,
   dailyBuckets,
   sparkline,
   topBy,
   weeklyQueueSplit,
 } from '../data/analytics.js';
-import { html, raw, setHtml, setText } from '../lib/dom.js';
+import { html, raw, setHtml } from '../lib/dom.js';
 import { fitWindow } from '../lib/store.js';
 import {
   fmtComputeMinutes,
   fmtDuration,
   fmtNumber,
+  percentile,
   repoShortName,
   timeAgo,
   toMinutes,
   truncate,
+  windowLabel,
 } from '../lib/format.js';
 import {
-  SEQUENTIAL_BLUE,
   STATUS_COLORS,
-  SURFACE,
   assignColors,
   entityColor,
-  healthTone,
+  sequential,
+  surface,
   withAlpha,
 } from '../lib/palette.js';
-import { axis, chart, chartMessage, dataTable, legend } from '../ui/charts.js';
+import { axis, chart, chartMessage, legend } from '../ui/charts.js';
 import { emptyState, eventRow, metricCard, repoCard } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
+import { progressFor } from './live.js';
 
 const OUTCOMES = [
   { key: 'success', label: 'success' },
@@ -38,6 +40,7 @@ const OUTCOMES = [
 
 export function renderOverview(ctx) {
   const { index, state } = ctx;
+  renderVerdict(ctx);
   renderMetrics(ctx);
 
   // No early return when the window is empty. Bailing out here left whatever
@@ -56,13 +59,119 @@ export function renderOverview(ctx) {
   renderRecovery(index);
   renderBurnRate(buckets);
   renderHeatmap(ctx);
-  renderQueueSplit(index);
+  renderQueueSplit(ctx.historyRuns || index.runs);
   renderP95(index);
+}
+
+/* ------------------------------------------------------------------ verdict */
+
+/**
+ * The one-line answer to "is CI OK?", with the reasons as chips you can act
+ * on. Everything below it is detail; this is what the reader came for.
+ */
+function renderVerdict(ctx) {
+  const { index, activeRuns, state } = ctx;
+  const o = index.overall;
+  const now = Date.now();
+  const graded = o.success + o.failed;
+
+  const repos = Array.from(index.repoStats.values());
+  const unhealthy = repos.filter((r) => r.health.score < 75).sort((a, b) => a.health.score - b.health.score);
+  const critical = unhealthy.filter((r) => r.health.score < 60);
+  const failed24 = index.runs.filter((r) => r.status === 'failed' && r.ts >= now - 86400000).length;
+  const overrun = activeRuns.filter((run) => progressFor(run, index, now).overrun).length;
+
+  let tone;
+  let title;
+  if (!o.total) {
+    tone = 'quiet';
+    title = 'Nothing in this window';
+  } else if (!graded) {
+    tone = 'quiet';
+    title = 'Nothing to grade yet';
+  } else if (critical.length || o.successRate < 75) {
+    tone = 'bad';
+    title = critical.length
+      ? `${critical.length} ${critical.length === 1 ? 'repository needs' : 'repositories need'} attention`
+      : 'CI is struggling';
+  } else if (unhealthy.length || failed24 || overrun) {
+    tone = 'warn';
+    title = 'Mostly healthy';
+  } else {
+    tone = 'good';
+    title = 'All systems green';
+  }
+
+  const scope = state.repo === 'all' ? '' : `In ${repoShortName(state.repo)}, `;
+  const parts = [];
+  if (graded) {
+    parts.push(`${o.successRate}% of ${fmtNumber(graded)} graded runs passed in the last ${windowLabel(state.days)}`);
+    if (o.failed) parts.push(`${fmtNumber(o.failed)} failed`);
+  } else if (o.total) {
+    parts.push(`${fmtNumber(o.total)} runs in the last ${windowLabel(state.days)}, none completed with a pass or a fail`);
+  } else {
+    parts.push('No runs in the selected window — widen it, or connect a token');
+  }
+  if (o.running) parts.push(`${fmtNumber(o.running)} running now`);
+  const summary = `${scope}${parts.join(' · ')}.`;
+
+  const chips = [];
+  unhealthy.slice(0, 4).forEach((r) => {
+    chips.push(html`<button class="chip ${r.health.score < 60 ? 'chip-bad' : 'chip-warn'}" type="button"
+      data-repo-filter="${r.repo}" title="Focus on ${r.repo}">${repoShortName(r.repo)} <span class="mono">${r.health.score}</span></button>`);
+  });
+  if (unhealthy.length > 4) chips.push(html`<span class="chip">+${unhealthy.length - 4} more</span>`);
+  if (failed24) {
+    chips.push(html`<button class="chip chip-bad" type="button" data-jump="failures">${icon('x', 12)} ${failed24} failed in 24h</button>`);
+  }
+  if (overrun) {
+    chips.push(html`<button class="chip chip-warn" type="button" data-jump="live">${icon('clock', 12)} ${overrun} running over median</button>`);
+  }
+  if (!chips.length && graded) {
+    chips.push(html`<span class="chip chip-good">${icon('check', 12)} No failures in the last 24 hours</span>`);
+  }
+
+  const glyph = tone === 'good' ? 'check' : tone === 'quiet' ? 'clock' : 'alert';
+  setHtml('verdictBar', html`
+    <div class="verdict verdict-${tone}" role="status">
+      <div class="verdict-icon" aria-hidden="true">${icon(glyph, 20)}</div>
+      <div class="verdict-body">
+        <h2 class="verdict-title">${title}</h2>
+        <p class="verdict-sub">${summary}</p>
+      </div>
+      ${chips.length ? html`<div class="verdict-chips">${chips}</div>` : ''}
+    </div>
+  `);
 }
 
 /* ------------------------------------------------------------------ metrics */
 
-function renderMetrics({ index, state, loadedRuns, newestRunTs }) {
+/** Relative change, for measures where the ratio is what matters. */
+export function pctDelta(current, previous, { better = 'up', title = '' } = {}) {
+  const cur = Number(current);
+  const prev = Number(previous);
+  if (!Number.isFinite(cur) || !Number.isFinite(prev) || prev === 0) return null;
+  const change = Math.round(((cur - prev) / prev) * 100);
+  return describeDelta(change, `${change > 0 ? '+' : ''}${change}%`, better, title);
+}
+
+/** Absolute change, for percentages-as-points and plain counts. */
+export function absDelta(current, previous, { better = 'up', unit = '', title = '' } = {}) {
+  const cur = Number(current);
+  const prev = Number(previous);
+  if (!Number.isFinite(cur) || !Number.isFinite(prev)) return null;
+  const change = Math.round(cur - prev);
+  return describeDelta(change, `${change > 0 ? '+' : ''}${change}${unit}`, better, title);
+}
+
+function describeDelta(change, text, better, title) {
+  if (!change) return { text: 'no change', dir: 'flat', good: null, title };
+  const dir = change > 0 ? 'up' : 'down';
+  const good = better === 'none' ? null : dir === better;
+  return { text, dir, good, title };
+}
+
+function renderMetrics({ index, prevIndex, state, loadedRuns, newestRunTs }) {
   const o = index.overall;
   if (!o.total) {
     // "no data" on its own reads as "your CI is empty" or "this is broken". If
@@ -72,41 +181,95 @@ function renderMetrics({ index, state, loadedRuns, newestRunTs }) {
     const wider = hasOlder ? fitWindow([{ ts: newestRunTs }], state.days) : null;
 
     setHtml('metricsRow', html`
-      <div class="metric-card" style="grid-column:1/-1;">
-        <div class="metric-label">no runs in the last ${state.days} day${state.days === 1 ? '' : 's'}</div>
+      <div class="metric-card span-all">
+        <div class="metric-label">No runs in the last ${windowLabel(state.days)}</div>
         ${hasOlder
           ? html`
-            <div class="metric-sub" style="margin-top:6px;">
+            <div class="metric-sub">
               ${fmtNumber(loadedRuns)} run${loadedRuns === 1 ? '' : 's'} loaded${state.repo === 'all' ? '' : ` (filtered to ${state.repo})`} ·
               most recent was ${timeAgo(newestRunTs)}
             </div>
             ${wider && wider !== state.days
-              ? html`<button class="logs-btn" type="button" data-action="widen-window" data-days="${wider}"
-                  style="margin-top:10px;">Show the last ${wider} days</button>`
+              ? html`<div><button class="btn btn-sm" type="button" data-action="widen-window" data-days="${wider}">Show the last ${windowLabel(wider)}</button></div>`
               : ''}
           `
-          : html`<div class="metric-sub" style="margin-top:6px;">
-              Nothing has been loaded yet. Connect a token, or widen the time range.
-            </div>`}
+          : html`<div class="metric-sub">Nothing has been loaded yet. Connect a token, or widen the time range.</div>`}
       </div>
     `);
-    setText('nav-fail-count', '0');
     return;
   }
 
-  const rateColor = o.successRate >= 90
-    ? 'var(--green)'
-    : o.successRate >= 75 ? 'var(--amber)' : 'var(--red)';
+  const p = prevIndex && prevIndex.overall.total ? prevIndex.overall : null;
+  const prevLabel = `vs the previous ${windowLabel(state.days)}`;
+
+  // Per-day series behind each tile. They show shape, not value: the number
+  // above them is the value.
+  const buckets = dailyBuckets(index.runs, state.days);
+  const perDay = (fn) => buckets.map((b) => fn(b.runs));
+  let lastRate = 100;
+  const spark = {
+    total: perDay((rs) => rs.length),
+    rate: perDay((rs) => {
+      const g = rs.filter((r) => r.status === 'success' || r.status === 'failed');
+      if (g.length) lastRate = Math.round((g.filter((r) => r.status === 'success').length / g.length) * 100);
+      return lastRate;
+    }),
+    failures: perDay((rs) => rs.filter((r) => r.status === 'failed').length),
+    duration: perDay((rs) => percentile(rs.filter((r) => r.status !== 'in_progress').map((r) => r.dur), 50)),
+    queue: perDay((rs) => percentile(rs.map((r) => r.queue), 50)),
+    compute: perDay((rs) => Math.round(rs.reduce((a, r) => a + r.dur, 0) / 60)),
+  };
+
+  const rateTone = o.successRate >= 90 ? 'good' : o.successRate >= 75 ? 'warn' : 'bad';
 
   setHtml('metricsRow', html`
-    ${metricCard({ label: 'total runs', value: fmtNumber(o.total), sub: `${fmtNumber(o.running)} running now` })}
-    ${metricCard({ label: 'success rate', value: `${o.successRate}%`, sub: `${fmtNumber(o.success)} of ${fmtNumber(o.success + o.failed)} graded`, color: rateColor })}
-    ${metricCard({ label: 'failures', value: fmtNumber(o.failed), sub: `${o.failureRate}% of graded runs`, color: o.failed ? 'var(--red)' : 'var(--text)' })}
-    ${metricCard({ label: 'median duration', value: fmtDuration(o.p50Duration), sub: `p95 ${fmtDuration(o.p95Duration)}` })}
-    ${metricCard({ label: 'median queue wait', value: fmtDuration(o.avgQueue), sub: `p95 ${fmtDuration(o.p95Queue)}`, color: o.p95Queue > 300 ? 'var(--amber)' : 'var(--text)' })}
-    ${metricCard({ label: 'compute', value: fmtComputeMinutes(o.computeMinutes), sub: `${fmtNumber(o.computeMinutes)} minutes` })}
+    ${metricCard({
+      label: 'Total runs',
+      value: fmtNumber(o.total),
+      sub: o.running ? `${fmtNumber(o.running)} running now` : `${fmtNumber(o.completed)} completed`,
+      delta: p ? pctDelta(o.total, p.total, { better: 'none', title: prevLabel }) : null,
+      spark: spark.total,
+    })}
+    ${metricCard({
+      label: 'Success rate',
+      value: `${o.successRate}%`,
+      sub: `${fmtNumber(o.success)} of ${fmtNumber(o.success + o.failed)} graded`,
+      tone: rateTone,
+      delta: p && p.success + p.failed ? absDelta(o.successRate, p.successRate, { unit: ' pts', better: 'up', title: prevLabel }) : null,
+      spark: spark.rate,
+      hint: 'Successes over successes plus failures. Cancelled and skipped runs are not graded.',
+    })}
+    ${metricCard({
+      label: 'Failures',
+      value: fmtNumber(o.failed),
+      sub: `${o.failureRate}% of graded runs`,
+      tone: o.failed ? 'bad' : 'good',
+      delta: p ? absDelta(o.failed, p.failed, { better: 'down', title: prevLabel }) : null,
+      spark: spark.failures,
+    })}
+    ${metricCard({
+      label: 'Median duration',
+      value: fmtDuration(o.p50Duration),
+      sub: `p95 ${fmtDuration(o.p95Duration)}`,
+      delta: p ? pctDelta(o.p50Duration, p.p50Duration, { better: 'down', title: prevLabel }) : null,
+      spark: spark.duration,
+    })}
+    ${metricCard({
+      label: 'Avg queue wait',
+      value: fmtDuration(o.avgQueue),
+      sub: `p95 ${fmtDuration(o.p95Queue)}`,
+      tone: o.p95Queue > 300 ? 'warn' : null,
+      delta: p ? pctDelta(o.avgQueue, p.avgQueue, { better: 'down', title: prevLabel }) : null,
+      spark: spark.queue,
+    })}
+    ${metricCard({
+      label: 'Compute',
+      value: fmtComputeMinutes(o.computeMinutes),
+      sub: `${fmtNumber(o.computeMinutes)} minutes`,
+      delta: p ? pctDelta(o.computeMinutes, p.computeMinutes, { better: 'none', title: prevLabel }) : null,
+      spark: spark.compute,
+    })}
   `);
-  setText('nav-fail-count', String(o.failed));
 }
 
 /* ------------------------------------------------------------------- charts */
@@ -125,7 +288,7 @@ function renderOutcomes(index) {
           data: counts.map((c) => c.value),
           backgroundColor: counts.map((c) => STATUS_COLORS[c.key]),
           // A 2px surface gap keeps adjacent segments legible without a stroke.
-          borderColor: SURFACE,
+          borderColor: surface(),
           borderWidth: 2,
           hoverOffset: 4,
         }],
@@ -133,7 +296,7 @@ function renderOutcomes(index) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '68%',
+        cutout: '70%',
         plugins: {
           tooltip: {
             callbacks: {
@@ -161,6 +324,9 @@ function renderVolume(buckets) {
   const success = buckets.map((b) => b.runs.filter((r) => r.status === 'success').length);
   const failed = buckets.map((b) => b.runs.filter((r) => r.status === 'failed').length);
   const other = buckets.map((b, i) => b.runs.length - success[i] - failed[i]);
+  const bar = (label, data, color) => ({
+    label, data, backgroundColor: color, stack: 'runs', borderRadius: 3, borderSkipped: false, borderColor: surface(), borderWidth: 2, maxBarThickness: 36,
+  });
 
   chart(
     'volumeChart',
@@ -169,15 +335,15 @@ function renderVolume(buckets) {
       data: {
         labels: buckets.map((b) => b.label),
         datasets: [
-          { label: 'success', data: success, backgroundColor: STATUS_COLORS.success, stack: 'runs', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
-          { label: 'failed', data: failed, backgroundColor: STATUS_COLORS.failed, stack: 'runs', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
-          { label: 'other', data: other, backgroundColor: STATUS_COLORS.skipped, stack: 'runs', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
+          bar('success', success, STATUS_COLORS.success),
+          bar('failed', failed, STATUS_COLORS.failed),
+          bar('other', other, STATUS_COLORS.skipped),
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: { x: axis({ grid: false, stacked: true }), y: axis({ stacked: true }) },
+        scales: { x: axis({ grid: false, stacked: true }), y: axis({ stacked: true, ticks: { precision: 0 } }) },
       },
     },
     {
@@ -209,8 +375,8 @@ function renderDurationTrend(index, buckets) {
     borderColor: colors.get(name),
     backgroundColor: 'transparent',
     tension: 0.35,
-    pointRadius: 4,
-    pointHoverRadius: 7,
+    pointRadius: 3,
+    pointHoverRadius: 6,
     borderWidth: 2,
     spanGaps: true,
   }));
@@ -265,6 +431,7 @@ function renderRecovery(index) {
           backgroundColor: entries.map((e) => entityColor(e.repo)),
           borderRadius: 4,
           borderSkipped: false,
+          maxBarThickness: 22,
         }],
       },
       options: {
@@ -322,7 +489,7 @@ function renderBurnRate(buckets) {
           backgroundColor: withAlpha(lineColor, 0.14),
           fill: true,
           tension: 0.35,
-          pointRadius: 3,
+          pointRadius: 2.5,
           borderWidth: 2,
         }],
       },
@@ -342,26 +509,30 @@ function renderBurnRate(buckets) {
 
   const arrow = rising ? '↑' : falling ? '↓' : '→';
   setHtml('burnRateStats', html`
-    ${burnStat('total', fmtComputeMinutes(total), `${fmtNumber(total)} minutes`)}
-    ${burnStat('daily average', `${avg}m`, 'across the window')}
-    ${burnStat('trend', `${arrow} ${Math.abs(trendPct)}%`,
-      rising ? 'rising' : falling ? 'falling' : 'steady',
-      rising ? 'var(--red)' : falling ? 'var(--green)' : 'var(--text)')}
+    ${burnStat('Total', fmtComputeMinutes(total), `${fmtNumber(total)} minutes`)}
+    ${burnStat('Daily average', `${avg}m`, 'across the window')}
+    ${burnStat('Trend', `${arrow} ${Math.abs(trendPct)}%`,
+      rising ? 'rising, second half vs first' : falling ? 'falling, second half vs first' : 'steady',
+      rising ? 'bad' : falling ? 'good' : null)}
   `);
 }
 
-function burnStat(label, value, sub, color) {
+function burnStat(label, value, sub, tone) {
   return html`
-    <div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px;">
+    <div class="burn-stat">
       <div class="metric-label">${label}</div>
-      <div style="font-size:18px;font-family:var(--mono);color:${color || 'var(--text)'};">${value}</div>
+      <div class="burn-val ${tone ? `tone-${tone}` : ''}">${value}</div>
       <div class="metric-sub">${sub}</div>
     </div>
   `;
 }
 
-function renderQueueSplit(index) {
-  const weeks = weeklyQueueSplit(index.runs);
+/**
+ * Weekly comparison, from everything loaded rather than the active window: a
+ * 7-day window would otherwise show one bar and three empty weeks.
+ */
+function renderQueueSplit(runs) {
+  const weeks = weeklyQueueSplit(runs);
   chart(
     'queueChart',
     {
@@ -369,8 +540,8 @@ function renderQueueSplit(index) {
       data: {
         labels: weeks.map((w) => w.label),
         datasets: [
-          { label: 'queue wait', data: weeks.map((w) => w.queue), backgroundColor: '#c98500', stack: 'a', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
-          { label: 'execution', data: weeks.map((w) => w.exec), backgroundColor: '#3987e5', stack: 'a', borderRadius: 3, borderSkipped: false, borderColor: SURFACE, borderWidth: 2 },
+          { label: 'queue wait', data: weeks.map((w) => w.queue), backgroundColor: '#c98500', stack: 'a', borderRadius: 3, borderSkipped: false, borderColor: surface(), borderWidth: 2, maxBarThickness: 48 },
+          { label: 'execution', data: weeks.map((w) => w.exec), backgroundColor: '#3987e5', stack: 'a', borderRadius: 3, borderSkipped: false, borderColor: surface(), borderWidth: 2, maxBarThickness: 48 },
         ],
       },
       options: {
@@ -409,6 +580,7 @@ function renderP95(index) {
           backgroundColor: '#9085e9',
           borderRadius: 4,
           borderSkipped: false,
+          maxBarThickness: 22,
         }],
       },
       options: {
@@ -451,6 +623,8 @@ export function renderRepoGrid(ctx, containerId) {
   };
   rows.sort(comparators[sort] || comparators.health);
 
+  const meta = new Map((state.repos || []).map((repo) => [repo.fullName, repo]));
+
   setHtml(containerId, rows.length
     ? html`${rows.map((stats) => {
         const key = `${containerId}:${stats.repo}`;
@@ -462,9 +636,14 @@ export function renderRepoGrid(ctx, containerId) {
               .filter((wf) => wf.total)
               .sort((a, b) => b.computeSeconds - a.computeSeconds)
           : [];
-        return repoCard(withSpark, { open, container: containerId, workflows });
+        const info = meta.get(stats.repo);
+        // Only ever link to github.com, whatever the API said.
+        const url = info && /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(String(info.htmlUrl || ''))
+          ? info.htmlUrl
+          : null;
+        return repoCard(withSpark, { open, container: containerId, workflows, url, focused: state.repo === stats.repo });
       })}`
-    : emptyState('No repositories with runs', 'Nothing matched the current filters.'));
+    : emptyState('No repositories with runs', 'Nothing matched the current filters.', { icon: 'folder' }));
 }
 
 /* ----------------------------------------------------------------- matrix */
@@ -473,9 +652,10 @@ function renderMatrix({ index, state }) {
   const repos = index.repos.slice(0, 14);
   const workflows = topBy(index.workflowStats, (s) => s.total, 10).map((e) => e.key);
   const metric = state.metric;
+  const ramp = sequential();
 
   if (!repos.length || !workflows.length) {
-    setHtml('matrixWrap', emptyState('Nothing to compare yet'));
+    setHtml('matrixWrap', emptyState('Nothing to compare yet', 'The matrix needs at least one repository with a workflow run.'));
     setHtml('matrixLegend', raw(''));
     return;
   }
@@ -511,10 +691,16 @@ function renderMatrix({ index, state }) {
       return withAlpha(t >= 0.9 ? STATUS_COLORS.success : t >= 0.75 ? '#fab219' : STATUS_COLORS.failed, 0.22);
     }
     const step = Math.min(
-      SEQUENTIAL_BLUE.length - 1,
-      Math.floor((max ? value / max : 0) * (SEQUENTIAL_BLUE.length - 1)),
+      ramp.length - 1,
+      Math.max(1, Math.ceil((max ? value / max : 0) * (ramp.length - 1))),
     );
-    return SEQUENTIAL_BLUE[step];
+    return ramp[step];
+  };
+  // Dark ramp steps need light text; the pale end of the light ramp does not.
+  const ink = (value) => {
+    if (value === null || metric === 'success') return '';
+    const step = Math.ceil((max ? value / max : 0) * (ramp.length - 1));
+    return ramp === sequential() && step >= 3 ? 'color:#fff;' : '';
   };
 
   setHtml('matrixWrap', html`
@@ -534,7 +720,7 @@ function renderMatrix({ index, state }) {
               const value = cells.get(`${repo} ${wf}`);
               const bg = background(value);
               return html`<td class="${value === null ? 'empty' : ''}"
-                style="${bg ? `background:${bg};` : ''}"
+                style="${bg ? `background:${bg};` : ''}${ink(value)}"
                 title="${repo} · ${wf}: ${format(value)}">${format(value)}</td>`;
             })}
           </tr>
@@ -549,7 +735,7 @@ function renderMatrix({ index, state }) {
         { label: '75–89%', color: withAlpha('#fab219', 0.5) },
         { label: 'below 75%', color: withAlpha(STATUS_COLORS.failed, 0.5) },
       ])
-    : legend(SEQUENTIAL_BLUE.slice(1).map((color, i, arr) => ({
+    : legend(ramp.slice(1).map((color, i, arr) => ({
         label: i === 0 ? 'low' : i === arr.length - 1 ? 'high' : '',
         color,
       }))));
@@ -564,11 +750,11 @@ function renderPulse(index) {
   byRecency.filter((r) => r.status === 'failed').slice(0, 6).forEach((run) => {
     events.push({
       ts: run.ts,
-      icon: '✕',
-      color: 'var(--red)',
+      kind: 'failed',
       text: `${run.wf} failed`,
       sub: repoShortName(run.repo),
       tag: run.flaky ? 'flaky' : null,
+      run,
     });
   });
 
@@ -580,10 +766,10 @@ function renderPulse(index) {
     if (stats && stats.p95Duration && run.dur > stats.p95Duration && stats.total > 5) {
       events.push({
         ts: run.ts,
-        icon: '⚠',
-        color: 'var(--amber)',
+        kind: 'slow',
         text: `${run.wf} took ${fmtDuration(run.dur)} (p95 ${fmtDuration(stats.p95Duration)})`,
         sub: repoShortName(run.repo),
+        run,
       });
     }
   });
@@ -591,7 +777,7 @@ function renderPulse(index) {
   const top = events.sort((a, b) => b.ts - a.ts).slice(0, 10);
   setHtml('ciPulseFeed', top.length
     ? html`${top.map(eventRow)}`
-    : emptyState('All quiet', 'No failures or outliers in this window.'));
+    : emptyState('All quiet', 'No failures or outliers in this window.', { icon: 'check' }));
 }
 
 function renderStreaks(index) {
@@ -600,19 +786,17 @@ function renderStreaks(index) {
     .slice(0, 6);
 
   setHtml('streakGrid', rows.length ? html`${rows.map((stats) => {
-    const color = stats.streak >= 10
-      ? 'var(--green)'
-      : stats.streak >= 5 ? 'var(--amber)' : stats.streak > 0 ? 'var(--text2)' : 'var(--red)';
+    const tone = stats.streak >= 10 ? 'tone-good' : stats.streak >= 5 ? 'tone-warn' : stats.streak > 0 ? 'muted' : 'tone-bad';
     const pips = Math.min(stats.streak, 10);
     return html`
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:18px;font-family:var(--mono);color:${color};min-width:32px;text-align:right;">${stats.streak}</span>
-        <div style="flex:1;min-width:0;">
+      <div class="streak-row ${tone}">
+        <span class="streak-num">${stats.streak}</span>
+        <div class="grow">
           <div class="pulse-text">${repoShortName(stats.repo)}</div>
           <div class="pulse-sub">${stats.streak === 0 ? 'last run was red' : 'consecutive green runs'} · ${stats.successRate}% overall</div>
         </div>
-        <div style="display:flex;gap:2px;" aria-hidden="true">
-          ${Array.from({ length: Math.max(pips, 1) }, () => html`<div style="width:6px;height:16px;border-radius:2px;background:${pips ? color : 'var(--red)'};opacity:0.75;"></div>`)}
+        <div class="streak-pips" aria-hidden="true">
+          ${Array.from({ length: Math.max(pips, 1) }, () => html`<span class="streak-pip"></span>`)}
         </div>
       </div>
     `;
@@ -627,13 +811,13 @@ function renderTimeSinks(index) {
   setHtml('timeSinks', entries.length ? html`${entries.map((entry) => {
     const minutes = Math.round(entry.value / 60);
     return html`
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <span class="pulse-text" style="font-size:11px;">${truncate(entry.key, 24)}</span>
-          <span class="section-sub">${fmtComputeMinutes(minutes)}</span>
+      <div class="sink-row">
+        <div class="sink-head">
+          <span class="sink-name" title="${entry.key}">${entry.key}</span>
+          <span class="sink-val">${fmtComputeMinutes(minutes)}</span>
         </div>
-        <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;">
-          <div style="height:100%;width:${Math.round((entry.value / max) * 100)}%;background:${colors.get(entry.key)};border-radius:2px;"></div>
+        <div class="sink-track">
+          <div class="sink-fill" style="width:${Math.round((entry.value / max) * 100)}%;background:${colors.get(entry.key)};"></div>
         </div>
       </div>
     `;
@@ -649,27 +833,29 @@ function renderHeatmap({ index, state }) {
     ? index.runs
     : index.runs.filter((r) => r.repo === state.heatRepo);
   const { matrix, counts, max } = activityMatrix(scoped, state.heatMetric);
+  const ramp = sequential();
 
   const unit = state.heatMetric === 'duration' || state.heatMetric === 'queue' ? 'm' : '';
-  const color = (value) => SEQUENTIAL_BLUE[
-    Math.min(SEQUENTIAL_BLUE.length - 1, Math.floor((value / max) * (SEQUENTIAL_BLUE.length - 1)))
-  ];
+  const color = (value) => (value === 0
+    ? 'var(--surface-3)'
+    : ramp[Math.min(ramp.length - 1, Math.max(1, Math.ceil((value / max) * (ramp.length - 1))))]);
 
   const hourTicks = [0, 3, 6, 9, 12, 15, 18, 21];
   setHtml('heatmapArea', html`
-    <div style="display:flex;">
-      <div style="display:flex;flex-direction:column;gap:2px;padding-top:20px;margin-right:6px;">
-        ${DAY_LABELS.map((day) => html`<div style="font-size:10px;font-family:var(--mono);color:var(--text3);height:14px;display:flex;align-items:center;">${day}</div>`)}
+    <div class="heatmap">
+      <div class="heatmap-days" aria-hidden="true">
+        ${DAY_LABELS.map((day) => html`<div class="hday">${day}</div>`)}
       </div>
-      <div style="flex:1;overflow-x:auto;">
-        <div class="heatmap-hours">
+      <div class="heatmap-body">
+        <div class="heatmap-hours" aria-hidden="true">
           ${Array.from({ length: 24 }, (_, h) => html`<div class="hhour">${hourTicks.includes(h) ? `${h}h` : ''}</div>`)}
         </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
+        <div class="heatmap-rows">
           ${DAY_LABELS.map((day, d) => html`
             <div class="heatmap-row">
-              ${Array.from({ length: 24 }, (_, h) => html`<div class="hcell"
+              ${Array.from({ length: 24 }, (_, h) => html`<div class="hcell" role="img"
                 style="background:${color(matrix[d][h])}"
+                aria-label="${day} ${h}:00 — ${matrix[d][h]}${unit} (${counts[d][h]} runs)"
                 data-tip="${day} ${h}:00 — ${matrix[d][h]}${unit} (${counts[d][h]} runs)"></div>`)}
             </div>
           `)}
@@ -680,7 +866,8 @@ function renderHeatmap({ index, state }) {
 
   setHtml('heatLegend', html`
     <span class="heat-leg-label">less</span>
-    ${SEQUENTIAL_BLUE.map((c) => html`<div class="heat-leg-cell" style="background:${c};"></div>`)}
-    <span class="heat-leg-label" style="margin-left:4px;">more</span>
+    <div class="heat-leg-cell" style="background:var(--surface-3);"></div>
+    ${ramp.slice(1).map((c) => html`<div class="heat-leg-cell" style="background:${c};"></div>`)}
+    <span class="heat-leg-label">more</span>
   `);
 }
